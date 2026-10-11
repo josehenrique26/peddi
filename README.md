@@ -1,4 +1,4 @@
-# 🍕 PizzaFlow - Cardápio, Pedidos e Entregas
+# 🍕 Peddi - Cardápio, Pedidos e Entregas
 
 > Sistema Web para pizzarias de pequeno porte gerenciarem cardápio, pedidos e
 > entregas, com painéis para empresa, cliente e entregador e confirmação de
@@ -13,9 +13,9 @@
 ![Disciplina](https://img.shields.io/badge/IFPB-Programação_para_Web_2-2E7D32)
 ![Etapa](https://img.shields.io/badge/etapa-inicial_(telas_estáticas)-orange)
 
-![Prévia do PizzaFlow](preview.png)
+![Prévia do Peddi](preview.png)
 
-🔗 **Veja o sistema no ar:** [josehenrique26.github.io/pizzaflow](https://josehenrique26.github.io/pizzaflow/)
+🔗 **Veja o sistema no ar:** [josehenrique26.github.io/peddi](https://josehenrique26.github.io/peddi/)
 
 ---
 
@@ -131,7 +131,7 @@ sequenceDiagram
 ## Documentação & Recursos
 
 - **Pitch / Apresentação:** [Link dos slides da proposta](https://docs.google.com/presentation/d/17q8Fk-A6t5QaA2-35b7DVFbNQAJvRsF4eevo3J0W1Rc/edit?usp=drivesdk)
-- **Protótipos / Design:** [Ver protótipos](docs/prototypes/) | [Figma](https://www.figma.com/make/O4jmNIXp7j0otHUTHx6u82/PizzaFlow-Web-App-Design)
+- **Protótipos / Design:** [Ver protótipos](docs/prototypes/) | [Figma](https://www.figma.com/make/O4jmNIXp7j0otHUTHx6u82/Peddi-Web-App-Design)
 - **Workflow / Kanban:** [GitHub Projects](https://github.com/users/josehenrique26/projects/2)
 - **Documentação do Projeto:** [Ver pasta de documentação](docs/)
   - [Modelo de dados](docs/data-model.md)
@@ -143,30 +143,30 @@ sequenceDiagram
 
 **Índice**
 
-- 🏠 **Índice / Home:** [https://josehenrique26.github.io/pizzaflow/](https://josehenrique26.github.io/pizzaflow/)
+- 🏠 **Índice / Home:** [https://josehenrique26.github.io/peddi/](https://josehenrique26.github.io/peddi/)
 
 **Acesso**
 
-- 🔑 **Login:** [login.html](https://josehenrique26.github.io/pizzaflow/screens/auth/login.html)
-- 📝 **Cadastro:** [register.html](https://josehenrique26.github.io/pizzaflow/screens/auth/register.html)
+- 🔑 **Login:** [login.html](https://josehenrique26.github.io/peddi/screens/auth/login.html)
+- 📝 **Cadastro:** [register.html](https://josehenrique26.github.io/peddi/screens/auth/register.html)
 
 **Cliente**
 
-- 🍕 **Cardápio:** [menu.html](https://josehenrique26.github.io/pizzaflow/screens/client/menu.html)
-- 🛒 **Carrinho e Checkout:** [cart.html](https://josehenrique26.github.io/pizzaflow/screens/client/cart.html)
-- 📦 **Meus Pedidos:** [orders.html](https://josehenrique26.github.io/pizzaflow/screens/client/orders.html)
-- 🔢 **Acompanhamento (com código de entrega):** [order-tracking.html](https://josehenrique26.github.io/pizzaflow/screens/client/order-tracking.html)
+- 🍕 **Cardápio:** [menu.html](https://josehenrique26.github.io/peddi/screens/client/menu.html)
+- 🛒 **Carrinho e Checkout:** [cart.html](https://josehenrique26.github.io/peddi/screens/client/cart.html)
+- 📦 **Meus Pedidos:** [orders.html](https://josehenrique26.github.io/peddi/screens/client/orders.html)
+- 🔢 **Acompanhamento (com código de entrega):** [order-tracking.html](https://josehenrique26.github.io/peddi/screens/client/order-tracking.html)
 
 **Empresa**
 
-- 📊 **Dashboard:** [dashboard.html](https://josehenrique26.github.io/pizzaflow/screens/company/dashboard.html)
-- 📋 **Gestão de Cardápio:** [admin-menu.html](https://josehenrique26.github.io/pizzaflow/screens/company/admin-menu.html)
-- 🧾 **Gestão de Pedidos:** [admin-orders.html](https://josehenrique26.github.io/pizzaflow/screens/company/admin-orders.html)
+- 📊 **Dashboard:** [dashboard.html](https://josehenrique26.github.io/peddi/screens/company/dashboard.html)
+- 📋 **Gestão de Cardápio:** [admin-menu.html](https://josehenrique26.github.io/peddi/screens/company/admin-menu.html)
+- 🧾 **Gestão de Pedidos:** [admin-orders.html](https://josehenrique26.github.io/peddi/screens/company/admin-orders.html)
 
 **Entregador**
 
-- 🛵 **Pedidos Disponíveis:** [available.html](https://josehenrique26.github.io/pizzaflow/screens/courier/available.html)
-- 🗺️ **Viagem Atual e Confirmação por Código:** [trip.html](https://josehenrique26.github.io/pizzaflow/screens/courier/trip.html)
+- 🛵 **Pedidos Disponíveis:** [available.html](https://josehenrique26.github.io/peddi/screens/courier/available.html)
+- 🗺️ **Viagem Atual e Confirmação por Código:** [trip.html](https://josehenrique26.github.io/peddi/screens/courier/trip.html)
 
 > Nesta etapa as telas são **estáticas, com dados fictícios** (HTML + CSS).
 > Nada é gravado e não há login real.
@@ -288,7 +288,7 @@ erDiagram
 <details>
 <summary>📌 Projeto 1.1 (Vanilla)</summary>
 
-| Critério | Onde aparece no PizzaFlow |
+| Critério | Onde aparece no Peddi |
 | -------- | ------------------------- |
 | Programação funcional | `filter` no cardápio por categoria e busca; `map` para montar as listas; `reduce` no total do carrinho e no faturamento |
 | ESM | Todo o `src/` com `import` e `export`, separado em `pages/`, `components/`, `services/` e `utils/` |
@@ -302,7 +302,7 @@ erDiagram
 <details>
 <summary>📌 Projeto 1.2 (React + Supabase)</summary>
 
-| Critério | Onde aparece no PizzaFlow |
+| Critério | Onde aparece no Peddi |
 | -------- | ------------------------- |
 | Arquitetura | Next.js (App Router) e TypeScript, com `app/`, `components/`, `hooks/`, `services/`, `schemas/` e `stores/` |
 | Supabase | Login, cadastro, logout, proteção de rotas por perfil e CRUD no PostgreSQL |
@@ -322,7 +322,7 @@ Um único repositório com uma pasta por etapa. Cada pasta é independente.
 <summary>📁 Ver a estrutura de pastas</summary>
 
 ```text
-pizzaflow/
+peddi/
 ├── index.html          índice de links das telas estáticas
 ├── README.md
 ├── preview.png         print 16:9, até 500 KB
@@ -351,12 +351,12 @@ pizzaflow/
 > configuração (`.env.example`) e execução.
 
 ```bash
-git clone https://github.com/josehenrique26/pizzaflow.git
-cd pizzaflow
+git clone https://github.com/josehenrique26/peddi.git
+cd peddi
 ```
 
 **Etapa inicial (telas estáticas):** abra o `index.html` no navegador ou acesse
-a versão publicada no [GitHub Pages](https://josehenrique26.github.io/pizzaflow/).
+a versão publicada no [GitHub Pages](https://josehenrique26.github.io/peddi/).
 
 **Projeto 1.1 (`vanilla/`):** instruções de instalação e execução serão
 adicionadas ao concluir a etapa.
