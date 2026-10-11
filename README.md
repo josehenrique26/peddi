@@ -358,8 +358,56 @@ cd peddi
 **Etapa inicial (telas estáticas):** abra o `index.html` no navegador ou acesse
 a versão publicada no [GitHub Pages](https://josehenrique26.github.io/peddi/).
 
-**Projeto 1.1 (`vanilla/`):** instruções de instalação e execução serão
-adicionadas ao concluir a etapa.
+**Projeto 1.1 (`vanilla/`):** 
+O projeto fica na pasta `vanilla/`. Ele usa o **Vite**, uma ferramenta que abre um servidor local e atualiza a página sozinho a cada alteração salva. Os dados ficam no **LocalStorage**, a memória do próprio navegador, então não existe banco de dados nem servidor para configurar.
+
+**O que você precisa ter instalado**
+
+- [Node.js](https://nodejs.org) (versão LTS). Ele já traz o `npm`, que baixa as dependências.
+- Git.
+
+Para conferir, rode `node -v` e `npm -v` no terminal. Se aparecerem números de versão, está tudo certo.
+
+**Passo a passo**
+
+```bash
+# 1. Baixe o projeto
+git clone https://github.com/josehenrique26/pizzaflow.git
+cd pizzaflow/vanilla
+
+# 2. Instale as dependências (só na primeira vez ou quando o package.json mudar)
+npm install
+
+# 3. Inicie o servidor de desenvolvimento
+npm run dev
+```
+
+O terminal vai mostrar um endereço, normalmente `http://localhost:5173`. Abra no navegador. Para parar o servidor, use `Ctrl + C` no terminal.
+
+> Não é preciso instalar o Vite à parte. Ele já está listado no `package.json` e vem junto com o `npm install`.
+
+**Comandos disponíveis**
+
+| Comando           | O que faz                                               |
+| ----------------- | ------------------------------------------------------- |
+| `npm install`     | Baixa as dependências do projeto                        |
+| `npm run dev`     | Abre o site localmente, com atualização automática      |
+| `npm run build`   | Gera a versão final otimizada na pasta `dist/`          |
+| `npm run preview` | Mostra no navegador a versão gerada pelo `build`        |
+
+**Onde ficam os dados**
+
+Os dados (produtos, pedidos, configurações) ficam no LocalStorage de cada navegador. Isso traz duas consequências:
+
+- Cada pessoa vê o seu próprio conjunto de dados, não o do colega.
+- Para recomeçar do zero, abra o navegador em F12, depois **Application**, depois **Local Storage**, e limpe os itens que começam com `peddi:`. Ao recarregar, o cardápio de exemplo é recriado.
+
+**Problemas comuns**
+
+- **`npm: command not found`:** o Node.js não está instalado ou o terminal precisa ser reaberto.
+- **Tela em branco ou erro de módulo:** não abra o `index.html` com dois cliques. Use sempre o endereço do `npm run dev`.
+- **Porta ocupada:** o Vite escolhe outra porta sozinho. Use o endereço que aparecer no terminal.
+- **Erro depois de atualizar o projeto:** rode `git pull` e depois `npm install` de novo, porque alguém pode ter adicionado uma dependência.
 
 **Projeto 1.2 (`web/`):** instruções de instalação, variáveis de ambiente
 (`.env.example`) e execução serão adicionadas ao concluir a etapa.
