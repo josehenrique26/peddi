@@ -372,8 +372,8 @@ Para conferir, rode `node -v` e `npm -v` no terminal. Se aparecerem números de 
 
 ```bash
 # 1. Baixe o projeto
-git clone https://github.com/josehenrique26/pizzaflow.git
-cd pizzaflow/vanilla
+git clone https://github.com/josehenrique26/peddi.git
+cd peddi/vanilla
 
 # 2. Instale as dependências (só na primeira vez ou quando o package.json mudar)
 npm install
