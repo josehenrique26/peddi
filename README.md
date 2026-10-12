@@ -1,8 +1,8 @@
-# 🍕 Peddi - Cardápio, Pedidos e Entregas
+# Peddi - Pedidos, Cardápio e Entregas para Negócios de Alimentação
 
-> Sistema Web para pizzarias de pequeno porte gerenciarem cardápio, pedidos e
-> entregas, com painéis para empresa, cliente e entregador e confirmação de
-> entrega por código.
+> Sistema Web para pizzarias, hamburguerias, sorveterias, restaurantes, marmitarias e outros
+> negócios de alimentação gerenciarem cardápio, pedidos e entregas, com painéis para
+> estabelecimento, cliente e entregador e confirmação de entrega por código.
 
 ![HTML5](https://img.shields.io/badge/HTML5-E34F26?logo=html5&logoColor=white)
 ![CSS3](https://img.shields.io/badge/CSS3-1572B6?logo=css3&logoColor=white)
@@ -11,7 +11,7 @@
 ![Next.js](https://img.shields.io/badge/Next.js-000000?logo=nextdotjs&logoColor=white)
 ![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?logo=supabase&logoColor=white)
 ![Disciplina](https://img.shields.io/badge/IFPB-Programação_para_Web_2-2E7D32)
-![Etapa](https://img.shields.io/badge/etapa-inicial_(telas_estáticas)-orange)
+![Etapa](https://img.shields.io/badge/etapa-Projeto_1.1_(em_andamento)-orange)
 
 ![Prévia do Peddi](preview.png)
 
@@ -21,30 +21,45 @@
 
 ## Ideia, Objetivo Principal & Público-Alvo
 
-- **Ideia & Objetivo:** Centralizar em um único sistema o cardápio digital, o
-  recebimento de pedidos e o controle das entregas de uma pizzaria, sem
-  depender de comissões de grandes plataformas de delivery.
+- **Ideia & Objetivo:** Centralizar em um único sistema o cardápio digital, o recebimento
+  de pedidos e o controle das entregas de pequenos negócios de alimentação, sem depender
+  de comissões de grandes plataformas de delivery. O Peddi é configurável: cada
+  estabelecimento define seu nome, tipo de negócio, categorias e produtos.
 - **Público-Alvo:**
-  - **Empresa (pizzaria):** donos e atendentes de pizzarias pequenas e
-    deliveries locais;
-  - **Cliente:** pessoas que desejam pedir pizza de forma rápida e acompanhar o
-    andamento do pedido;
-  - **Entregador:** profissionais que realizam as entregas da pizzaria.
-- **Problema:** Pedidos recebidos por WhatsApp e telefone geram erros de
-  anotação, perda de pedidos, cardápios desatualizados, falta de controle sobre
-  quem entregou o quê e dificuldade de confirmar que o pedido chegou ao
-  cliente. As grandes plataformas resolvem parte disso, mas cobram taxas altas.
-- **Solução & Valor:** Interface Web simples com três perfis. A pizzaria
-  gerencia o cardápio e o fluxo dos pedidos, o cliente faz o pedido e acompanha
-  o status, e o entregador seleciona até 3 pedidos por viagem. A entrega só é
-  concluída quando o entregador informa o **código de confirmação** exibido na
-  tela do cliente.
+  - **Estabelecimento (empresa):** donos e atendentes de pizzarias, hamburguerias,
+    sorveterias, restaurantes, marmitarias e deliveries de pequeno porte;
+  - **Cliente:** pessoas que desejam pedir de forma rápida e acompanhar o andamento do pedido;
+  - **Entregador:** profissionais que realizam as entregas do estabelecimento.
+- **Problema:** Pedidos recebidos por WhatsApp e telefone geram erros de anotação, perda de
+  pedidos, cardápios desatualizados, falta de controle sobre quem entregou o quê e
+  dificuldade de confirmar que o pedido chegou ao cliente. As grandes plataformas resolvem
+  parte disso, mas cobram taxas altas, o que pesa para quem tem margem pequena.
+- **Solução & Valor:** Interface Web simples com três perfis. O estabelecimento gerencia o
+  cardápio e o fluxo dos pedidos, o cliente faz o pedido e acompanha o status, e o
+  entregador seleciona até 3 pedidos por viagem. A entrega só é concluída quando o
+  entregador informa o **código de confirmação** exibido na tela do cliente.
+
+### Como o Peddi se adapta a cada negócio
+
+O fluxo de pedido e de entrega é o mesmo; o que muda é o cardápio, definido pelo estabelecimento.
+
+| Negócio | Exemplos de categorias | Exemplos de produtos |
+| ------- | ---------------------- | -------------------- |
+| Pizzaria | Salgadas, Doces, Bebidas | Calabresa, Margherita, Brownie |
+| Hamburgueria | Lanches, Porções, Bebidas | Cheeseburger, Batata frita |
+| Sorveteria | Sorvetes, Açaí, Casquinhas | Açaí 500 ml, Casquinha dupla |
+| Restaurante | Pratos, Sobremesas, Bebidas | Prato do dia, Mousse |
+| Marmitaria | Marmitas, Acompanhamentos, Bebidas | Marmita média, Suco natural |
+
+> Escopo do Projeto 1.1: **um estabelecimento por instalação**, configurável. O modelo de
+> dados do Projeto 1.2 já nasce preparado (`establishments`) para evoluir a vários
+> estabelecimentos.
 
 ### Perfis de usuário
 
 | Perfil | O que pode fazer |
 | ------ | ---------------- |
-| 🏪 **Empresa** | Gerenciar o cardápio (CRUD), visualizar pedidos, alterar o status até "Pronto", consultar faturamento e histórico. |
+| 🏪 **Estabelecimento (empresa)** | Configurar o negócio, gerenciar o cardápio (CRUD), ver pedidos, avançar o status até "Pronto", consultar faturamento e histórico. |
 | 🛒 **Cliente** | Ver o cardápio, filtrar por categoria, montar o carrinho, finalizar o pedido, acompanhar o status e consultar o código de entrega. |
 | 🛵 **Entregador** | Ver apenas pedidos "Prontos", selecionar até 3 por viagem, iniciar a viagem, ver os endereços e confirmar a entrega com o código. |
 
@@ -58,34 +73,27 @@ flowchart LR
     C -.-> X
 ```
 
-> O cancelamento é possível (pela empresa ou pelo cliente) **antes** de
-> "Saiu para entrega".
+> O cancelamento é possível **antes** de "Saiu para entrega".
 
 ### Regras do fluxo de entrega
 
-1. Quando a pizzaria marca o pedido como **Pronto**, ele aparece na lista do
-   entregador mostrando apenas **bairro, itens e valor**. O endereço completo
-   fica oculto.
-2. O entregador **seleciona até 3 pedidos** para formar uma viagem. Um pedido
-   só pode ser reservado por um entregador (reserva atômica, para que dois
-   entregadores não peguem o mesmo pedido).
-3. Ao **iniciar a viagem**, os pedidos mudam para **Saiu para entrega**, o
-   entregador passa a ver os **endereços completos** e o sistema **gera um
-   código de 4 dígitos** para cada pedido.
+1. Quando o estabelecimento marca o pedido como **Pronto**, ele aparece na lista do entregador
+   mostrando apenas **bairro, itens e valor**. O endereço completo fica oculto.
+2. O entregador **seleciona até 3 pedidos** para formar uma viagem. Um pedido só pode ser
+   reservado por um entregador (reserva atômica, para que dois entregadores não peguem o mesmo).
+3. Ao **iniciar a viagem**, os pedidos mudam para **Saiu para entrega**, o entregador passa a
+   ver os **endereços completos** e o sistema **gera um código de 4 dígitos** por pedido.
 4. O código aparece **somente na tela do cliente**.
 5. No local, o cliente informa o código e o entregador o digita no sistema.
-6. Se o código estiver correto, o pedido muda automaticamente para
-   **Entregue**. Se estiver incorreto, o sistema exibe erro e **limita as
-   tentativas**.
-7. O entregador só pode iniciar uma nova viagem quando todos os pedidos da
-   viagem atual estiverem **entregues ou cancelados**.
+6. Código correto: o pedido muda para **Entregue**. Código incorreto: erro e **limite de tentativas**.
+7. Uma nova viagem só começa quando todos os pedidos da atual estiverem **entregues ou cancelados**.
 
 <details>
 <summary>📈 Ver o diagrama da confirmação por código</summary>
 
 ```mermaid
 sequenceDiagram
-    actor E as Empresa
+    actor E as Estabelecimento
     actor C as Cliente
     actor D as Entregador
     participant S as Sistema
@@ -112,9 +120,9 @@ sequenceDiagram
 
 | Ferramenta | Pontos Fortes | Limitações | Diferencial da Solução |
 | ---------- | ------------- | ---------- | ---------------------- |
-| iFood | Grande base de clientes e entrega integrada | Comissões altas para o restaurante | Sem comissão e com controle próprio dos clientes |
+| iFood | Grande base de clientes e entrega integrada | Comissões altas para o estabelecimento | Sem comissão e com controle próprio dos clientes |
 | Anota AI | Cardápio digital e pedidos via WhatsApp | Foco em atendimento, pouca gestão de entregas | Controle da viagem do entregador e confirmação por código |
-| Goomer | Cardápio digital e gestão de pedidos | Planos pagos e funcionalidades amplas demais | Interface enxuta voltada a pizzarias pequenas |
+| Goomer | Cardápio digital e gestão de pedidos | Planos pagos e funcionalidades amplas demais | Interface enxuta, adaptável a vários tipos de negócio |
 | Cardápio Web | Painel completo para o lojista | Curva de aprendizado e custo mensal | Fluxo simples com três perfis bem definidos |
 
 ---
@@ -130,8 +138,8 @@ sequenceDiagram
 
 ## Documentação & Recursos
 
-- **Pitch / Apresentação:** [Link dos slides da proposta](https://docs.google.com/presentation/d/17q8Fk-A6t5QaA2-35b7DVFbNQAJvRsF4eevo3J0W1Rc/edit?usp=drivesdk)
-- **Protótipos / Design:** [Ver protótipos](docs/prototypes/) | [Figma](https://www.figma.com/make/O4jmNIXp7j0otHUTHx6u82/Peddi-Web-App-Design)
+- **Pitch / Apresentação:** [PREENCHER: link dos slides da proposta]
+- **Protótipos / Design:** [Ver protótipos](docs/prototypes/) | [Figma](https://www.figma.com/make/O4jmNIXp7j0otHUTHx6u82/PizzaFlow-Web-App-Design)
 - **Workflow / Kanban:** [GitHub Projects](https://github.com/users/josehenrique26/projects/2)
 - **Documentação do Projeto:** [Ver pasta de documentação](docs/)
   - [Modelo de dados](docs/data-model.md)
@@ -152,12 +160,12 @@ sequenceDiagram
 
 **Cliente**
 
-- 🍕 **Cardápio:** [menu.html](https://josehenrique26.github.io/peddi/screens/client/menu.html)
+- 🍽️ **Cardápio:** [menu.html](https://josehenrique26.github.io/peddi/screens/client/menu.html)
 - 🛒 **Carrinho e Checkout:** [cart.html](https://josehenrique26.github.io/peddi/screens/client/cart.html)
 - 📦 **Meus Pedidos:** [orders.html](https://josehenrique26.github.io/peddi/screens/client/orders.html)
 - 🔢 **Acompanhamento (com código de entrega):** [order-tracking.html](https://josehenrique26.github.io/peddi/screens/client/order-tracking.html)
 
-**Empresa**
+**Estabelecimento**
 
 - 📊 **Dashboard:** [dashboard.html](https://josehenrique26.github.io/peddi/screens/company/dashboard.html)
 - 📋 **Gestão de Cardápio:** [admin-menu.html](https://josehenrique26.github.io/peddi/screens/company/admin-menu.html)
@@ -168,48 +176,55 @@ sequenceDiagram
 - 🛵 **Pedidos Disponíveis:** [available.html](https://josehenrique26.github.io/peddi/screens/courier/available.html)
 - 🗺️ **Viagem Atual e Confirmação por Código:** [trip.html](https://josehenrique26.github.io/peddi/screens/courier/trip.html)
 
-> Nesta etapa as telas são **estáticas, com dados fictícios** (HTML + CSS).
-> Nada é gravado e não há login real.
+> Nesta etapa as telas são **estáticas, com dados fictícios** (HTML + CSS). Nada é gravado e não há login real.
 
 ---
 
 ## Funcionalidades Planejadas (Features)
 
+O backlog completo (requisitos funcionais e não funcionais, com critérios de aceitação) está no [GitHub Projects](https://github.com/users/josehenrique26/projects/2).
+
 ### Etapa inicial (interface estática com dados fictícios)
 
 - [x] Telas estáticas dos três perfis (HTML + CSS)
 - [x] Página `index.html` com links para todas as telas
-- [ ] Telas responsivas (celular e computador)
-- [ ] Identidade visual (nome, logo e paleta: tomate, queijo, manjericão e creme)
-- [ ] Badges de status padronizados em todas as telas
+- [x] Telas responsivas (celular e computador)
+- [x] Badges de status padronizados em todas as telas
+- [ ] Identidade visual do Peddi (nome, logo e paleta) aplicada a todas as telas
+- [ ] Vocabulário neutro nas telas (produto, categoria e estabelecimento)
 
 ### Projeto 1.1 (Front-end Vanilla)
 
+- [ ] Perfil simulado por seletor (sem login real)
+- [ ] Configuração do estabelecimento: nome, tipo de negócio, logo, horário e taxa de entrega
 - [ ] Listagem do cardápio com filtro por categoria e busca (`filter`)
-- [ ] Carrinho com cálculo de subtotal e total (`map` e `reduce`)
-- [ ] CRUD de itens do cardápio pela empresa (arrays e LocalStorage ou `json-server`)
-- [ ] Criação de pedidos e alteração de status ao longo do fluxo
-- [ ] Seleção de até 3 pedidos por viagem pelo entregador
-- [ ] Geração de código de entrega e confirmação com mudança automática para "Entregue"
-- [ ] Painel da empresa com faturamento e pedidos por status (`reduce`)
+- [ ] Carrinho com observação por item e total calculado (`map` e `reduce`)
+- [ ] Checkout com endereço (CEP via ViaCEP) e forma de pagamento
+- [ ] CRUD de produtos e categorias pelo estabelecimento (LocalStorage ou `json-server`)
+- [ ] Criação de pedidos, acompanhamento e alteração de status ao longo do fluxo
+- [ ] Seleção de até 3 pedidos por viagem, com reserva sem duplicidade
+- [ ] Código de entrega de 4 dígitos, confirmação e limite de tentativas
+- [ ] Painel do estabelecimento com faturamento, ticket médio e ranking (`reduce`)
 - [ ] Organização modular com ESM e uso do Vite (template vanilla)
 
 ### Projeto 1.2 (Next.js, React e Supabase)
 
-- [ ] Autenticação (login, cadastro e logout) com Supabase Auth
-- [ ] Proteção de rotas por perfil (cliente, empresa e entregador)
-- [ ] Persistência de cardápio, pedidos e entregas no PostgreSQL (Supabase)
+- [ ] Autenticação (cadastro, login e logout) com Supabase Auth
+- [ ] Proteção de rotas por perfil (cliente, estabelecimento e entregador)
+- [ ] Persistência no PostgreSQL (Supabase), com modelo preparado para vários estabelecimentos
 - [ ] Políticas de Row Level Security por perfil
-- [ ] Formulários validados com React Hook Form e Zod (cadastro, endereço, CEP, telefone e item do cardápio)
-- [ ] Gerência de estado com Context API ou Zustand (carrinho) e TanStack Query (dados do servidor)
+- [ ] Funções no banco: reservar pedidos, iniciar viagem e confirmar entrega
+- [ ] Formulários validados com React Hook Form e Zod (cadastro, endereço, CEP, telefone e produto)
+- [ ] Estado com Zustand (carrinho) e TanStack Query (dados do servidor)
 - [ ] Atualização de status dos pedidos (polling ou Supabase Realtime)
-- [ ] Upload de imagens dos produtos (Supabase Storage)
+- [ ] Upload de imagens dos produtos e da logo (Supabase Storage)
 
 ### Fora do escopo inicial (possíveis evoluções)
 
+- Vitrine com vários estabelecimentos para o cliente escolher
 - Pagamento online real (será simulado: dinheiro, pix fictício e cartão na entrega)
 - Rastreamento do entregador em mapa
-- Pizza meio a meio, bordas e adicionais personalizados
+- Adicionais e combos personalizados
 - Notificações push ou por WhatsApp
 
 ---
@@ -217,45 +232,41 @@ sequenceDiagram
 ## Estratégia para Obtenção de Dados Reais (Hipóteses Técnicas)
 
 - **Fontes de Dados & Coleta:**
-  - Cardápio cadastrado pela própria pizzaria no sistema, com opção futura de
+  - Cardápio e categorias cadastrados pelo próprio estabelecimento, com opção futura de
     importação em lote via arquivo CSV;
-  - Preenchimento automático de rua, bairro e cidade pelo CEP com a API
-    [ViaCEP](https://viacep.com.br/);
-  - Imagens dos produtos enviadas pela empresa e armazenadas no **Supabase
-    Storage**.
+  - Preenchimento automático de rua, bairro e cidade pelo CEP com a API [ViaCEP](https://viacep.com.br/);
+  - Imagens dos produtos e logo enviadas pelo estabelecimento e armazenadas no **Supabase Storage**.
 - **Armazenamento & API:**
   - Tabelas modeladas no **Supabase PostgreSQL** (modelo abaixo);
-  - Autenticação com **Supabase Auth**, com o papel do usuário guardado em
-    `profiles`;
-  - **Row Level Security (RLS)** para que o cliente veja apenas seus pedidos, o
-    entregador veja apenas pedidos "Prontos" (sem endereço completo) e os da
-    própria viagem, e a empresa veja todos;
-  - Reserva dos pedidos e validação do código de entrega por **funções SQL
-    (RPC)** do Supabase, garantindo atomicidade, limite de 3 pedidos por viagem
-    e limite de tentativas de código;
-  - Atualização de status por polling com TanStack Query, com **Supabase
-    Realtime** como evolução.
+  - Autenticação com **Supabase Auth**, com o papel do usuário guardado em `profiles`;
+  - **Row Level Security (RLS)**: o cliente vê apenas seus pedidos, o entregador vê apenas
+    pedidos "Prontos" (sem endereço completo) e os da própria viagem, e o estabelecimento vê todos os seus;
+  - Reserva dos pedidos e validação do código por **funções SQL (RPC)** do Supabase, garantindo
+    atomicidade, limite de 3 pedidos por viagem e limite de tentativas;
+  - Atualização de status por polling com TanStack Query, com **Supabase Realtime** como evolução.
 
 ### Do dado fictício ao dado real
 
 | O que a tela mostra hoje (fictício) | De onde virá o dado real | Quando |
 | ----------------------------------- | ------------------------ | ------ |
-| Pizzas, categorias e preços | Cadastro feito pela pizzaria (CRUD) | 1.1: LocalStorage ou `json-server`; 1.2: tabelas `products` e `categories` |
-| Fotos das pizzas | Upload feito pela empresa | 1.2: Supabase Storage |
+| Nome, tipo e taxa do estabelecimento | Configuração feita pelo estabelecimento | 1.1: LocalStorage; 1.2: tabela `establishments` |
+| Produtos, categorias e preços | Cadastro feito pelo estabelecimento (CRUD) | 1.1: LocalStorage ou `json-server`; 1.2: `products` e `categories` |
+| Fotos e logo | Upload feito pelo estabelecimento | 1.2: Supabase Storage |
 | Endereço do cliente | Digitação + consulta de CEP no ViaCEP | 1.1 e 1.2 |
-| Pedidos e status | Criação pelo cliente e avanço pela empresa | 1.1: LocalStorage; 1.2: tabelas `orders` e `order_items` |
+| Pedidos e status | Criação pelo cliente e avanço pelo estabelecimento | 1.1: LocalStorage; 1.2: `orders` e `order_items` |
 | Viagem e código de entrega | Geração ao iniciar a viagem | 1.1: função em `utils/`; 1.2: função RPC no banco |
-| Faturamento do dashboard | Soma dos pedidos entregues (`reduce`) | 1.1 e 1.2 |
+| Faturamento do dashboard | Soma dos pedidos não cancelados (`reduce`) | 1.1 e 1.2 |
 | Login e perfil | Cadastro real de usuários | 1.2: Supabase Auth + `profiles` |
 
 ### Modelo de dados inicial
 
 | Tabela | Principais campos |
 | ------ | ----------------- |
+| `establishments` | id, nome, tipo_negocio, logo_url, horario, taxa_entrega |
 | `profiles` | id, nome, telefone, papel (`cliente`, `empresa`, `entregador`) |
-| `categories` | id, nome |
-| `products` | id, nome, descricao, preco, imagem_url, category_id, disponivel |
-| `orders` | id, cliente_id, delivery_id, status, total, endereco, bairro, forma_pagamento, codigo_entrega, tentativas, criado_em |
+| `categories` | id, establishment_id, nome |
+| `products` | id, establishment_id, nome, descricao, preco, imagem_url, category_id, disponivel |
+| `orders` | id, establishment_id, cliente_id, delivery_id, status, total, endereco, bairro, forma_pagamento, codigo_entrega, tentativas, criado_em |
 | `order_items` | id, order_id, product_id, quantidade, preco_unitario, observacao |
 | `deliveries` | id, entregador_id, status (`em_andamento`, `finalizada`), iniciada_em, finalizada_em |
 
@@ -264,6 +275,9 @@ sequenceDiagram
 
 ```mermaid
 erDiagram
+    ESTABLISHMENTS ||--o{ CATEGORIES : possui
+    ESTABLISHMENTS ||--o{ PRODUCTS : oferece
+    ESTABLISHMENTS ||--o{ ORDERS : recebe
     PROFILES ||--o{ ORDERS : "faz (cliente)"
     PROFILES ||--o{ DELIVERIES : "realiza (entregador)"
     CATEGORIES ||--o{ PRODUCTS : agrupa
@@ -289,12 +303,12 @@ erDiagram
 <summary>📌 Projeto 1.1 (Vanilla)</summary>
 
 | Critério | Onde aparece no Peddi |
-| -------- | ------------------------- |
-| Programação funcional | `filter` no cardápio por categoria e busca; `map` para montar as listas; `reduce` no total do carrinho e no faturamento |
+| -------- | --------------------- |
+| Programação funcional | `filter` no cardápio por categoria e busca; `map` para montar as listas; `reduce` no total do carrinho, no faturamento e no ranking |
 | ESM | Todo o `src/` com `import` e `export`, separado em `pages/`, `components/`, `services/` e `utils/` |
-| Estruturação de dados | Produtos, pedidos e viagens em arrays, persistidos no LocalStorage ou `json-server` |
+| Estruturação de dados | Produtos, categorias, pedidos e viagens em arrays, persistidos no LocalStorage ou `json-server` |
 | DOM e componentes dinâmicos | Cards, badges e modais criados com `createElement` e `appendChild`, mais o CRUD do cardápio |
-| Eventos | Cliques (adicionar ao carrinho, mudar status), envio de formulários e campos de busca e filtro |
+| Eventos | Cliques (adicionar ao carrinho, mudar status), formulários e campos de busca e filtro |
 | Vite | Projeto criado a partir do template vanilla, em `vanilla/` |
 
 </details>
@@ -303,12 +317,12 @@ erDiagram
 <summary>📌 Projeto 1.2 (React + Supabase)</summary>
 
 | Critério | Onde aparece no Peddi |
-| -------- | ------------------------- |
+| -------- | --------------------- |
 | Arquitetura | Next.js (App Router) e TypeScript, com `app/`, `components/`, `hooks/`, `services/`, `schemas/` e `stores/` |
 | Supabase | Login, cadastro, logout, proteção de rotas por perfil e CRUD no PostgreSQL |
 | Componentes e UI | Componentes reutilizáveis com Tailwind CSS e shadcn/ui, layout responsivo |
 | Formulários | React Hook Form + Zod + RegExp (CEP e telefone), com mensagens de erro |
-| Estado | `useState`, Context API/Zustand (carrinho e sessão) e TanStack Query (dados do servidor) |
+| Estado | `useState`, Zustand (carrinho e sessão) e TanStack Query (dados do servidor) |
 
 </details>
 
@@ -347,84 +361,27 @@ peddi/
 
 ## Como executar
 
-> Esta seção será atualizada a cada etapa, com instruções de instalação,
-> configuração (`.env.example`) e execução.
+> Esta seção será atualizada a cada etapa, com instruções de instalação, configuração (`.env.example`) e execução.
 
 ```bash
 git clone https://github.com/josehenrique26/peddi.git
 cd peddi
 ```
 
-**Etapa inicial (telas estáticas):** abra o `index.html` no navegador ou acesse
-a versão publicada no [GitHub Pages](https://josehenrique26.github.io/peddi/).
+**Etapa inicial (telas estáticas):** abra o `index.html` no navegador ou acesse a versão publicada no [GitHub Pages](https://josehenrique26.github.io/peddi/).
 
-**Projeto 1.1 (`vanilla/`):** 
-O projeto fica na pasta `vanilla/`. Ele usa o **Vite**, uma ferramenta que abre um servidor local e atualiza a página sozinho a cada alteração salva. Os dados ficam no **LocalStorage**, a memória do próprio navegador, então não existe banco de dados nem servidor para configurar.
+**Projeto 1.1 (`vanilla/`):** instruções de instalação e execução serão adicionadas ao concluir a etapa.
 
-**O que você precisa ter instalado**
-
-- [Node.js](https://nodejs.org) (versão LTS). Ele já traz o `npm`, que baixa as dependências.
-- Git.
-
-Para conferir, rode `node -v` e `npm -v` no terminal. Se aparecerem números de versão, está tudo certo.
-
-**Passo a passo**
-
-```bash
-# 1. Baixe o projeto
-git clone https://github.com/josehenrique26/peddi.git
-cd peddi/vanilla
-
-# 2. Instale as dependências (só na primeira vez ou quando o package.json mudar)
-npm install
-
-# 3. Inicie o servidor de desenvolvimento
-npm run dev
-```
-
-O terminal vai mostrar um endereço, normalmente `http://localhost:5173`. Abra no navegador. Para parar o servidor, use `Ctrl + C` no terminal.
-
-> Não é preciso instalar o Vite à parte. Ele já está listado no `package.json` e vem junto com o `npm install`.
-
-**Comandos disponíveis**
-
-| Comando           | O que faz                                               |
-| ----------------- | ------------------------------------------------------- |
-| `npm install`     | Baixa as dependências do projeto                        |
-| `npm run dev`     | Abre o site localmente, com atualização automática      |
-| `npm run build`   | Gera a versão final otimizada na pasta `dist/`          |
-| `npm run preview` | Mostra no navegador a versão gerada pelo `build`        |
-
-**Onde ficam os dados**
-
-Os dados (produtos, pedidos, configurações) ficam no LocalStorage de cada navegador. Isso traz duas consequências:
-
-- Cada pessoa vê o seu próprio conjunto de dados, não o do colega.
-- Para recomeçar do zero, abra o navegador em F12, depois **Application**, depois **Local Storage**, e limpe os itens que começam com `peddi:`. Ao recarregar, o cardápio de exemplo é recriado.
-
-**Problemas comuns**
-
-- **`npm: command not found`:** o Node.js não está instalado ou o terminal precisa ser reaberto.
-- **Tela em branco ou erro de módulo:** não abra o `index.html` com dois cliques. Use sempre o endereço do `npm run dev`.
-- **Porta ocupada:** o Vite escolhe outra porta sozinho. Use o endereço que aparecer no terminal.
-- **Erro depois de atualizar o projeto:** rode `git pull` e depois `npm install` de novo, porque alguém pode ter adicionado uma dependência.
-
-**Projeto 1.2 (`web/`):** instruções de instalação, variáveis de ambiente
-(`.env.example`) e execução serão adicionadas ao concluir a etapa.
+**Projeto 1.2 (`web/`):** instruções de instalação, variáveis de ambiente (`.env.example`) e execução serão adicionadas ao concluir a etapa.
 
 ---
 
 ## Fluxo de Trabalho
 
-- Uma **issue por história de usuário**, com critérios de aceitação em checklist
-  (exemplo: *Como entregador, quero selecionar até 3 pedidos para formar uma
-  viagem*).
-- Labels por **perfil** (cliente, empresa, entregador) e por **etapa**
-  (inicial, 1.1, 1.2).
-- Quadro Kanban no GitHub Projects: Backlog, Em andamento, Em revisão e
-  Concluído.
-- Todo commit ou pull request cita a issue (`closes #N`), registrando a
-  participação de cada integrante.
+- Uma **issue por requisito**, com objetivo e critérios de aceitação em checklist (RF-GEN, RF-CLI, RF-EMP, RF-ENT e RNF).
+- Labels por **perfil** (`cliente`, `empresa`, `entregador`, `geral`), por **tipo** (`rnf`) e por **etapa** (`inicial`, `1.1`, `1.2`).
+- Quadro Kanban no GitHub Projects: Backlog, Em andamento, Em revisão e Concluído.
+- Todo commit ou pull request cita a issue (`closes #N`), registrando a participação de cada integrante.
 
 ---
 
