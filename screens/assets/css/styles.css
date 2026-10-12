@@ -1,4 +1,4 @@
-/* PizzaFlow - CSS compartilhado das telas estáticas (etapa inicial)
+/* Peddi - CSS compartilhado das telas estáticas (etapa inicial)
    Tokens de cor, componentes base (btn, card, badge, input) e layouts responsivos. */
 @import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap");
 :root {
@@ -380,7 +380,7 @@ textarea:focus {
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: var(--yl);
+  background: var(--rd);
 }
 .live {
   width: 8px;
