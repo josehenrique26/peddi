@@ -1,0 +1,167 @@
+/* landing */
+.hero {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 48px;
+  align-items: center;
+  padding: 48px 0 36px;
+}
+.hero h1 {
+  margin: 18px 0 14px;
+}
+.hero .lead {
+  font-size: 1.12rem;
+  color: var(--ink-2);
+  max-width: 52ch;
+  margin-bottom: 22px;
+}
+.access {
+  padding: 20px;
+}
+.access .seg {
+  margin-bottom: 14px;
+}
+.access-row {
+  display: flex;
+  gap: 10px;
+}
+.access-row .field {
+  flex: 1;
+  margin: 0;
+}
+.ex {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+  align-items: center;
+  font-size: 0.86rem;
+  color: var(--muted);
+}
+.ex button {
+  border: 1px dashed var(--line);
+  background: transparent;
+  border-radius: 99px;
+  padding: 4px 11px;
+  cursor: pointer;
+  font-size: 0.84rem;
+}
+.ex button:hover {
+  background: var(--line-2);
+}
+.ticket {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 22px 22px 18px;
+}
+.ticket::before,
+.ticket::after {
+  content: "";
+  position: absolute;
+  top: 92px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--bg);
+  border: 1px solid var(--line);
+}
+.ticket::before {
+  left: -11px;
+}
+.ticket::after {
+  right: -11px;
+}
+.ticket .perf {
+  border-top: 2px dashed var(--line);
+  margin: 16px -22px;
+}
+.ladder {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+.ladder li {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  font-weight: 600;
+}
+.ladder .dot {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--line-2);
+  color: var(--muted);
+  flex: none;
+}
+.ladder .on .dot {
+  background: var(--orange);
+  color: var(--on-orange);
+}
+.ladder .done .dot {
+  background: var(--green-soft);
+  color: var(--green-ink);
+}
+.ladder .t {
+  margin-left: auto;
+  font-weight: 500;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+.profiles {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  padding: 16px 0 56px;
+}
+.profile {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.profile .pi {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: var(--graphite);
+  color: var(--orange);
+}
+.profile p {
+  color: var(--muted);
+  flex: 1;
+}
+.notmk {
+  border-left: 4px solid var(--orange);
+  padding: 4px 0 4px 16px;
+  margin: 0 0 28px;
+  max-width: 70ch;
+}
+.limits {
+  padding-bottom: 36px;
+}
+
+@media (max-width: 1080px) {
+  .hero {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+}
+@media (max-width: 900px) {
+  .profiles {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 640px) {
+  .access-row {
+    flex-direction: column;
+  }
+}
