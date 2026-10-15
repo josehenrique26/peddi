@@ -1,4 +1,4 @@
-// Tela: Pedidos 'Prontos' sem endereço completo (RF-ENT-01).
+// Tela: Pedidos 'Prontos' sem endereço completo (RF-ENT-01 e RF-ENT-02).
 
 const ESTILOS_ID = "peddi-courier-styles";
 
@@ -31,7 +31,7 @@ function injetarEstilos() {
     .btn-nav:hover { color: #fff; border-color: #666; }
     .btn-nav.active { background: var(--primary-color); color: #fff; border-color: var(--primary-color); }
     .topbar-right { display: flex; gap: 10px; }
-    .container { max-width: 600px; margin: 20px auto; padding: 0 16px 120px 16px; }
+    .container { max-width: 600px; margin: 20px auto; padding: 0 16px 140px 16px; }
     .hero-card { background-color: var(--dark-bg); color: #fff; padding: 20px; border-radius: 12px; margin-bottom: 25px; }
     .hero-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
     .hero-brand { display: flex; align-items: center; gap: 10px; font-weight: bold; font-size: 1.1rem; }
@@ -42,9 +42,12 @@ function injetarEstilos() {
     .section-header h3 { font-size: 1.4rem; margin-bottom: 4px; color: var(--text-main); }
     .section-header p { color: var(--text-muted); font-size: 0.9rem; }
     .badge-count { background: #e2e8f0; color: #334155; padding: 4px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; white-space: nowrap; }
-    .order-card { background: #fff; border: 1px solid var(--border-color); border-radius: 12px; padding: 18px; display: flex; gap: 14px; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); transition: transform 0.15s ease, border-color 0.15s ease; }
+    
+    /* Card do Pedido com estado selecionado */
+    .order-card { background: #fff; border: 1.5px solid var(--border-color); border-radius: 12px; padding: 18px; display: flex; gap: 14px; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); transition: all 0.15s ease; cursor: pointer; }
     .order-card:hover { border-color: #cbd5e1; }
-    .checkbox-container input { width: 20px; height: 20px; cursor: pointer; accent-color: var(--primary-color); margin-top: 2px; }
+    .order-card.selected { border-color: var(--primary-color); background-color: #fff9f6; box-shadow: 0 2px 10px rgba(255, 90, 34, 0.12); }
+    .checkbox-container input { width: 22px; height: 22px; cursor: pointer; accent-color: var(--primary-color); margin-top: 2px; }
     .order-content { flex: 1; }
     .order-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
     .order-id { font-weight: 700; font-size: 1rem; color: var(--text-main); }
@@ -55,6 +58,25 @@ function injetarEstilos() {
     .order-footer .price { font-weight: 700; color: var(--text-main); }
     .empty-state { background: #fff; border: 1px dashed var(--border-color); border-radius: 12px; padding: 40px 20px; text-align: center; color: var(--text-muted); }
     .empty-state p { font-size: 1rem; margin-top: 8px; }
+
+    /* RF-ENT-02: Barra de ação inferior fixa com contador */
+    .fixed-bottom { position: fixed; bottom: 0; left: 0; width: 100%; display: flex; flex-direction: column; align-items: center; pointer-events: none; z-index: 100; }
+    .action-bar { background: var(--dark-bg); color: #fff; padding: 14px 20px; border-radius: 12px; width: calc(100% - 32px); max-width: 560px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; pointer-events: auto; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25); }
+    .action-bar-counter { font-size: 0.95rem; color: #cbd5e1; }
+    .action-bar-counter b { color: #fff; font-size: 1.2rem; }
+    .action-buttons { display: flex; gap: 10px; align-items: center; }
+    .btn-clear { background: transparent; color: #cbd5e1; border: 1px solid #475569; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; transition: all 0.15s ease; }
+    .btn-clear:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
+    .btn-start-trip { background: var(--primary-color); color: #fff; border: none; padding: 8px 18px; border-radius: 6px; font-weight: 700; font-size: 0.9rem; cursor: pointer; transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-start-trip:hover:not(:disabled) { opacity: 0.92; transform: translateY(-1px); }
+    .btn-start-trip:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    /* RF-ENT-02: Aviso flutuante para recusa do 4º pedido */
+    .aviso-limite { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background-color: #dc2626; color: #fff; padding: 12px 22px; border-radius: 8px; font-weight: 600; font-size: 0.9rem; box-shadow: 0 4px 16px rgba(220, 38, 38, 0.35); z-index: 1000; display: flex; align-items: center; gap: 10px; animation: slideDown 0.25s ease; }
+    @keyframes slideDown {
+      from { opacity: 0; transform: translate(-50%, -12px); }
+      to { opacity: 1; transform: translate(-50%, 0); }
+    }
   `;
   document.head.appendChild(style);
 }
@@ -69,7 +91,6 @@ const DADOS_INICIAIS = [
     itens: "2× Margherita",
     valor: "R$ 76,00",
     tempo: "há 21 min de espera",
-    // Dados sensíveis que NÃO devem aparecer na listagem de disponíveis (RF-ENT-01):
     endereco_completo: "Rua São Sebastião, 342, Saúde",
     cliente: "Ana Beatriz Lima",
     telefone: "(11) 98765-4321"
@@ -136,6 +157,9 @@ export function renderCourierAvailable(root) {
   );
 
   root.innerHTML = `
+    <!-- Container para avisos visuais (ex: limite de pedidos atingido) -->
+    <div id="container-aviso" style="display: none;"></div>
+
     <header class="topbar">
       <div class="topbar-left">
         <span class="logo-icon-small">P</span>
@@ -169,7 +193,7 @@ export function renderCourierAvailable(root) {
       <div class="section-header">
         <div>
           <h3>Prontos para retirada</h3>
-          <p>Pedidos prontos sem entregador. Selecione até 3 para montar sua viagem.</p>
+          <p>Selecione de 1 a 3 pedidos para montar sua viagem.</p>
         </div>
         <span class="badge-count">${pedidosProntos.length} prontos</span>
       </div>
@@ -214,5 +238,136 @@ export function renderCourierAvailable(root) {
         }
       </div>
     </main>
+
+    <!-- RF-ENT-02: Barra de ação fixa inferior com contador e botão de iniciar -->
+    ${
+      pedidosProntos.length > 0
+        ? `
+      <div class="fixed-bottom">
+        <div class="action-bar">
+          <span class="action-bar-counter">
+            <b id="contador-selecionados">0</b> de 3 selecionados
+          </span>
+          <div class="action-buttons">
+            <button id="btn-limpar" class="btn-clear" type="button">Limpar</button>
+            <button id="btn-iniciar" class="btn-start-trip" type="button" disabled>
+              Iniciar viagem 🛵
+            </button>
+          </div>
+        </div>
+      </div>
+    `
+        : ""
+    }
   `;
+
+  // Configurar interatividade de seleção (RF-ENT-02)
+  if (pedidosProntos.length > 0) {
+    configurarSelecao();
+  }
+}
+
+// RF-ENT-02: Lógica de seleção, contador dinâmico, trava do 4º pedido e botão habilitado/desabilitado
+function configurarSelecao() {
+  const selecionados = new Set();
+  const contadorEl = document.getElementById("contador-selecionados");
+  const btnIniciar = document.getElementById("btn-iniciar");
+  const btnLimpar = document.getElementById("btn-limpar");
+  const containerAviso = document.getElementById("container-aviso");
+  const cards = document.querySelectorAll(".order-card");
+
+  let timeoutAviso = null;
+
+  function mostrarAviso(msg) {
+    if (timeoutAviso) clearTimeout(timeoutAviso);
+    containerAviso.innerHTML = `
+      <div class="aviso-limite">
+        <span>⚠️</span>
+        <span>${msg}</span>
+      </div>
+    `;
+    containerAviso.style.display = "block";
+    timeoutAviso = setTimeout(() => {
+      containerAviso.style.display = "none";
+    }, 3500);
+  }
+
+  function atualizarInterface() {
+    const total = selecionados.size;
+
+    // Critério: Contador dinâmico (X de 3 selecionados)
+    if (contadorEl) {
+      contadorEl.textContent = total;
+    }
+
+    // Critério: Iniciar viagem desabilitado sem seleção
+    if (btnIniciar) {
+      btnIniciar.disabled = total === 0;
+    }
+
+    // Atualiza estado visual de cada card e checkbox
+    cards.forEach((card) => {
+      const id = card.getAttribute("data-id");
+      const checkbox = card.querySelector('input[type="checkbox"]');
+      const isSelected = selecionados.has(id);
+
+      if (checkbox) checkbox.checked = isSelected;
+      if (isSelected) {
+        card.classList.add("selected");
+      } else {
+        card.classList.remove("selected");
+      }
+    });
+
+    // Salva a seleção no localStorage para as próximas etapas (viagem)
+    localStorage.setItem("peddi_pedidos_selecionados", JSON.stringify(Array.from(selecionados)));
+  }
+
+  cards.forEach((card) => {
+    const id = card.getAttribute("data-id");
+    const checkbox = card.querySelector('input[type="checkbox"]');
+
+    // Ao clicar no card (ou diretamente no checkbox)
+    card.addEventListener("click", (event) => {
+      // Se clicou diretamente no input, o evento padrão já inverte o checked
+      const clicouDiretamenteNoCheckbox = event.target === checkbox;
+
+      if (selecionados.has(id)) {
+        // Desmarcar
+        selecionados.delete(id);
+      } else {
+        // Critério: Quarto pedido recusado com aviso
+        if (selecionados.size >= 3) {
+          if (clicouDiretamenteNoCheckbox) {
+            checkbox.checked = false;
+          }
+          mostrarAviso("Limite atingido: você só pode selecionar até 3 pedidos por viagem!");
+          return;
+        }
+        // Marcar
+        selecionados.add(id);
+      }
+
+      atualizarInterface();
+    });
+  });
+
+  // Botão Limpar seleção
+  if (btnLimpar) {
+    btnLimpar.addEventListener("click", () => {
+      selecionados.clear();
+      atualizarInterface();
+    });
+  }
+
+  // Botão Iniciar viagem (prepara navegação futura)
+  if (btnIniciar) {
+    btnIniciar.addEventListener("click", () => {
+      if (selecionados.size === 0) return;
+      location.hash = "#/courier/trip";
+    });
+  }
+
+  // Executa uma vez para sincronizar
+  atualizarInterface();
 }
