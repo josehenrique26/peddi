@@ -1,23 +1,18 @@
-// src/components/logo.js — logo do Peddi: símbolo (public/img/logo.svg) + nome em texto.
-import { h } from "../utils/dom.js";
-
+// src/components/logo.js — marca do Peddi. As funções devolvem TEXTO HTML, para usar dentro de outros textos.
 const base = import.meta.env.BASE_URL; // "/" no dev, "/peddi/" no build
 const LOGO = `${base}img/logo.svg`;
 
-// Só o símbolo (barra de demonstração, cabeçalhos pequenos).
 export function marcaLogo(tamanho = 30) {
-  return h("img", { src: LOGO, alt: "", height: tamanho, "aria-hidden": "true" });
+  return `<img src="${LOGO}" alt="" height="${tamanho}" aria-hidden="true" />`;
 }
 
-// Símbolo + nome "Peddi". O texto usa a cor do tema, então funciona no claro e no escuro.
 export function logoCompleto(tamanho = 30) {
-  return h("span", { class: "logo" },
-    marcaLogo(tamanho),
-    h("span", null, "Peddi"),
-  );
+  return `<span class="logo">${marcaLogo(tamanho)}<span>Peddi</span></span>`;
 }
 
-// Substitui <span data-logo> do HTML pelo logo.
-export function montarLogos(raiz = document) {
-  raiz.querySelectorAll("[data-logo]").forEach((m) => m.replaceWith(logoCompleto()));
+// Substitui cada <span data-logo> do HTML pelo logo.
+export function montarLogos() {
+  document.querySelectorAll("[data-logo]").forEach((marcador) => {
+    marcador.outerHTML = logoCompleto();
+  });
 }

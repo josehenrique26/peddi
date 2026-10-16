@@ -1,7 +1,6 @@
 // src/components/bar-chart.js — gráfico de colunas em SVG (createElementNS), sem biblioteca.
 // Uso: const g = graficoDeBarras(container, { rotuloY: "pedidos" }); g.atualizar(baldes);
 // Cada balde: { rotulo, titulo, pedidos, futuro }. O gráfico se redesenha quando o container muda de largura.
-import { h } from "../utils/dom.js";
 
 const NS = "http://www.w3.org/2000/svg";
 const svgEl = (tag, atributos = {}) => {
@@ -28,14 +27,23 @@ function caminhoBarra(x, y, w, alt) {
 
 export function graficoDeBarras(container, { descricao }) {
   let baldes = [];
-  const tooltip = h("div", { class: "chart-tip", role: "status", hidden: true });
-  const area = h("div", { class: "chart-area" });
+  const tooltip = document.createElement("div");
+  tooltip.className = "chart-tip";
+  tooltip.setAttribute("role", "status");
+  tooltip.hidden = true;
+
+  const area = document.createElement("div");
+  area.className = "chart-area";
+
   container.replaceChildren(area, tooltip);
 
   function mostrarTip(balde, x) {
-    tooltip.replaceChildren(
-      h("strong", {}, balde.titulo),
-      h("span", {}, balde.futuro ? "Ainda não chegou" : `${balde.pedidos} ${balde.pedidos === 1 ? "pedido" : "pedidos"}`));
+    const titulo = document.createElement("strong");
+    titulo.textContent = balde.titulo;
+    const valor = document.createElement("span");
+    valor.textContent = balde.futuro ? "Ainda não chegou" : `${balde.pedidos} ${balde.pedidos === 1 ? "pedido" : "pedidos"}`;
+    tooltip.replaceChildren(titulo, valor);
+
     tooltip.hidden = false;
     const meio = tooltip.offsetWidth / 2;
     const esq = Math.min(Math.max(x - meio, 0), container.clientWidth - tooltip.offsetWidth);

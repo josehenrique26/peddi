@@ -2,8 +2,8 @@
 import "../styles/main.css";
 import "../styles/pages/home.css";
 
-import { h } from "../utils/dom.js";
 import { aplicarTemaSalvo } from "../utils/theme.js";
+import { preencherSelect } from "../utils/select.js";
 import { rotas, rotaDoPerfil, navegar } from "../utils/routes.js";
 import { COMANDA_EXEMPLO, ESTADOS } from "../data/order-states.js";
 import { carregarDados, lerSessao, gravarSessao } from "../services/storage.js";
@@ -41,8 +41,13 @@ function preencher(novoModo, valor) {
   campo.focus();
 }
 
-function chip(texto, novoModo, valor) {
-  return h("button", { type: "button", onclick: () => preencher(novoModo, valor) }, texto);
+// Botão de exemplo: ao clicar, preenche o formulário.
+function criarChip(texto, novoModo, valor) {
+  const botao = document.createElement("button");
+  botao.type = "button";
+  botao.textContent = texto;
+  botao.addEventListener("click", () => preencher(novoModo, valor));
+  return botao;
 }
 
 function montarExemplos() {
@@ -50,18 +55,12 @@ function montarExemplos() {
   const inativa = listarEmpresas().find((c) => !c.active);
   const [primeira, segunda] = ativas;
 
-  $("#ex-validos").append(
-    ...[
-      primeira && chip(`peddi.app/${primeira.slug}`, "link", `peddi.app/${primeira.slug}`),
-      segunda && chip(`código ${segunda.code}`, "code", segunda.code),
-    ].filter(Boolean),
-  );
-  $("#ex-erros").append(
-    ...[
-      chip("código inexistente", "code", "XYZ000"),
-      inativa && chip("empresa inativa", "code", inativa.code),
-    ].filter(Boolean),
-  );
+  // append() só adiciona no fim, então o <span> de rótulo do HTML continua no lugar.
+  if (primeira) $("#ex-validos").append(criarChip(`peddi.app/${primeira.slug}`, "link", `peddi.app/${primeira.slug}`));
+  if (segunda) $("#ex-validos").append(criarChip(`código ${segunda.code}`, "code", segunda.code));
+
+  $("#ex-erros").append(criarChip("código inexistente", "code", "XYZ000"));
+  if (inativa) $("#ex-erros").append(criarChip("empresa inativa", "code", inativa.code));
 }
 
 function iniciarAcesso() {
@@ -85,46 +84,56 @@ function iniciarAcesso() {
 
 /* ---------- comanda de exemplo ---------- */
 function montarComanda() {
-  const itens = COMANDA_EXEMPLO.map(({ estado, hora, situacao }) => {
+  const itens = [];
+
+  for (const { estado, hora, situacao } of COMANDA_EXEMPLO) {
     const { rotulo, icone: nomeIcone } = ESTADOS[estado];
-    const classe = { feito: "done", atual: "on", pendente: "" }[situacao];
     const marcador = situacao === "pendente" ? "pin" : nomeIcone;
-    return h("li", { class: classe, "aria-current": situacao === "atual" ? "step" : null },
-      h("span", { class: "dot" }, icone(marcador, 14)),
-      rotulo,
-      h("span", { class: "t" }, hora));
-  });
+
+    const item = document.createElement("li");
+    item.className = { feito: "done", atual: "on", pendente: "" }[situacao];
+    if (situacao === "atual") item.setAttribute("aria-current", "step");
+
+    const bolinha = document.createElement("span");
+    bolinha.className = "dot";
+    bolinha.append(icone(marcador, 14));
+
+    const horario = document.createElement("span");
+    horario.className = "t";
+    horario.textContent = hora;
+
+    item.append(bolinha, rotulo, horario);
+    itens.push(item);
+  }
+
   $("#ladder").replaceChildren(...itens);
 }
 
 /* ---------- cards de perfil ---------- */
-function preencherSelect(id, opcoes) {
-  $(id).replaceChildren(...opcoes.map(([valor, texto]) => h("option", { value: valor }, texto)));
-}
-
 function montarPerfis() {
-  preencherSelect("#d-company", listarEmpresas().map((c) => [c.id, c.name + (c.active ? "" : " (inativa)")]));
-  preencherSelect("#d-customer", listarClientes().map((c) => [c.id, c.name]));
-  preencherSelect("#d-courier", listarEntregadores().map((c) =>
+  preencherSelect($("#d-company"), listarEmpresas().map((c) => [c.id, c.name + (c.active ? "" : " (inativa)")]));
+  preencherSelect($("#d-customer"), listarClientes().map((c) => [c.id, c.name]));
+  preencherSelect($("#d-courier"), listarEntregadores().map((c) =>
     [c.id, `${c.name} · ${obterEmpresa(c.companyId)?.name ?? ""}${c.active ? "" : " (inativo)"}`]));
 
   const escolha = { admin: ["companyId", "#d-company"], cliente: ["customerId", "#d-customer"], entregador: ["courierId", "#d-courier"] };
 
-  document.querySelectorAll("[data-enter]").forEach((botao) =>
+  document.querySelectorAll("[data-enter]").forEach((botao) => {
     botao.addEventListener("click", () => {
       const perfil = botao.dataset.enter;
       const [chave, seletor] = escolha[perfil];
       gravarSessao({ ...lerSessao(), role: perfil, [chave]: $(seletor).value });
       navegar(rotaDoPerfil[perfil]());
-    }));
+    });
+  });
 }
 
 /* ---------- inicialização ---------- */
 aplicarTemaSalvo();
 carregarDados();
 montarLogos();
-montarIcones();
 montarBarraDemo($("#demo"));
 iniciarAcesso();
 montarComanda();
 montarPerfis();
+montarIcones();

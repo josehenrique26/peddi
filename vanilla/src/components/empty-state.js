@@ -1,10 +1,23 @@
-// src/components/empty-state.js — bloco "nada por aqui" reutilizável.
-import { h } from "../utils/dom.js";
+// src/components/empty-state.js — bloco "nada por aqui". Devolve um elemento.
 import { icone } from "./icon.js";
 
 export function estadoVazio({ icone: nomeIcone = "receipt", titulo, texto }) {
-  return h("div", { class: "empty" },
-    h("span", { class: "ico-wrap" }, icone(nomeIcone, 24)),
-    h("h3", {}, titulo),
-    texto ? h("p", {}, texto) : null);
+  const caixa = document.createElement("div");
+  caixa.className = "empty";
+
+  const circulo = document.createElement("span");
+  circulo.className = "ico-wrap";
+  circulo.append(icone(nomeIcone, 24));
+
+  const h3 = document.createElement("h3");
+  h3.textContent = titulo;
+  caixa.append(circulo, h3);
+
+  if (texto) {
+    const p = document.createElement("p");
+    p.textContent = texto;
+    caixa.append(p);
+  }
+  return caixa;
 }
+

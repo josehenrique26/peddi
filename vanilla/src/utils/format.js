@@ -21,3 +21,10 @@ export function quando(ts) {
 export function inicioDoDia(ts = Date.now()) {
   const d = new Date(ts); d.setHours(0, 0, 0, 0); return d.getTime();
 }
+
+// Troca < > & " ' por códigos seguros. Use em todo texto digitado pelo usuário que for entrar num innerHTML.
+export function escapar(texto) {
+  return String(texto ?? "")
+    .replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;").replaceAll("'", "&#39;");
+}
