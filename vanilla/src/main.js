@@ -7,10 +7,12 @@ import { renderAdminMenu } from "./pages/admin-menu.js";
 import { renderAdminOrders } from "./pages/admin-orders.js";
 import { renderCourierAvailable } from "./pages/courier-available.js";
 import { renderCourierTrip } from "./pages/courier-trip.js";
+
 import "./styles/main.css";
 
 const routes = {
-  "#/": renderHome,
+  "#/": renderCourierAvailable, // Padrão aponta para a tela do entregador enquanto a home não é implementada
+  "#/home": renderHome,
   "#/menu": renderMenu,
   "#/cart": renderCart,
   "#/orders": renderOrders,
@@ -21,7 +23,7 @@ const routes = {
 };
 
 function navigate() {
-  const render = routes[location.hash || "#/"] ?? renderHome;
+  const render = routes[location.hash || "#/"] ?? renderCourierAvailable;
   render(document.getElementById("app"));
 }
 

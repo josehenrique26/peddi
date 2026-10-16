@@ -9,6 +9,7 @@ export default defineConfig(({ command }) => ({
     rollupOptions: {
       input: {
         index: resolve(import.meta.dirname, "index.html"),
+        entregador: resolve(import.meta.dirname, "entregador.html"),
         // loja: resolve(import.meta.dirname, "loja.html"),
         // pedidos: resolve(import.meta.dirname, "pedidos.html"),
       },
