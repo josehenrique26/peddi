@@ -17,7 +17,23 @@
     <div id="app"></div>
     <script type="module">
       import { renderCourierAvailable } from "./src/pages/courier-available.js";
-      renderCourierAvailable(document.getElementById("app"));
+      import { renderCourierTrip } from "./src/pages/courier-trip.js";
+      import { obterViagemAtual } from "./src/services/orders.js";
+
+      function rotearEntregador() {
+        const root = document.getElementById("app");
+        const viagem = obterViagemAtual();
+
+        // RF-ENT-04: Critério 5 - Reabrir o sistema retoma a viagem atual
+        if (location.hash === "#/courier/trip" || (viagem && location.hash !== "#/courier/available")) {
+          renderCourierTrip(root);
+        } else {
+          renderCourierAvailable(root);
+        }
+      }
+
+      window.addEventListener("hashchange", rotearEntregador);
+      rotearEntregador();
     </script>
   </body>
 </html>

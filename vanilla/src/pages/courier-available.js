@@ -1,8 +1,9 @@
-// src/pages/courier-available.js — Pedidos 'Prontos' sem endereço completo (RF-ENT-01, RF-ENT-02 e RF-ENT-03).
+// src/pages/courier-available.js — Pedidos 'Prontos' sem endereço completo (RF-ENT-01, RF-ENT-02, RF-ENT-03 e RF-ENT-04).
 import {
   obterPedidos,
   listarPedidosProntos,
-  reservarPedidosAtomicamente,
+  iniciarViagem,
+  obterViagemAtual,
   simularOutroEntregadorPegou,
   salvarPedidos,
   PEDIDOS_INICIAIS,
@@ -80,11 +81,17 @@ function injetarEstilos() {
     .btn-start-trip:hover:not(:disabled) { opacity: 0.92; transform: translateY(-1px); }
     .btn-start-trip:disabled { opacity: 0.35; cursor: not-allowed; }
 
-    /* Avisos flutuantes (RF-ENT-02 e RF-ENT-03) */
+    /* Avisos flutuantes (RF-ENT-02, RF-ENT-03 e RF-ENT-04) */
     .aviso-flutuante { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); color: #fff; padding: 12px 22px; border-radius: 8px; font-weight: 600; font-size: 0.9rem; z-index: 1000; display: flex; align-items: center; gap: 10px; animation: slideDown 0.25s ease; max-width: 90%; }
     .aviso-erro { background-color: #dc2626; box-shadow: 0 4px 16px rgba(220, 38, 38, 0.35); }
     .aviso-sucesso { background-color: #16a34a; box-shadow: 0 4px 16px rgba(22, 163, 74, 0.35); }
     
+    /* Aviso de viagem em andamento (RF-ENT-04) */
+    .banner-viagem-ativa { background: #ffedd5; border: 1.5px solid #fb923c; border-radius: 10px; padding: 14px 18px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+    .banner-viagem-ativa b { color: #9a3412; font-size: 0.95rem; }
+    .banner-viagem-ativa small { color: #c2410c; display: block; font-size: 0.85rem; margin-top: 2px; }
+    .btn-retomar { background: #ea580c; color: #fff; padding: 8px 14px; border-radius: 6px; font-weight: 700; text-decoration: none; font-size: 0.85rem; white-space: nowrap; }
+
     /* Barra de simulação / testes em modo demonstração */
     .demo-actions { margin-top: 10px; padding: 10px 14px; background: #fff; border: 1px dashed #cbd5e1; border-radius: 8px; font-size: 0.82rem; color: #64748b; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
     .btn-test { background: #f1f5f9; border: 1px solid #cbd5e1; color: #334155; padding: 4px 10px; border-radius: 6px; font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: all 0.15s ease; }
@@ -121,7 +128,7 @@ function gerarHtmlCards(pedidos) {
           <span class="order-id">${pedido.id}</span>
           <span class="tag-pronto">Pronto</span>
         </div>
-        <!-- RF-ENT-01: Exibir apenas o bairro. Nome, telefone e endereço completo permanecem ocultos. -->
+        <!-- RF-ENT-01: Exibir apenas o bairro. Nome, telefone e endereço completo permanecem ocultos até o início da viagem. -->
         <div class="order-bairro">
           <span>📍</span>
           <span>${pedido.bairro}</span>
@@ -144,9 +151,10 @@ export function renderCourierAvailable(root) {
   const sessao = lerSessao();
   const courierId = sessao.courierId || "ct_1";
   const pedidosProntos = listarPedidosProntos();
+  const viagemAtiva = obterViagemAtual();
 
   root.innerHTML = `
-    <!-- Container para avisos flutuantes (RF-ENT-02 e RF-ENT-03) -->
+    <!-- Container para avisos flutuantes (RF-ENT-02, RF-ENT-03 e RF-ENT-04) -->
     <div id="container-aviso" style="display: none;"></div>
 
     <header class="topbar">
@@ -165,6 +173,21 @@ export function renderCourierAvailable(root) {
     </header>
 
     <main class="container">
+      <!-- RF-ENT-04: Critério 5 - Se houver viagem ativa, exibe banner para retomar imediatamente -->
+      ${
+        viagemAtiva
+          ? `
+        <div class="banner-viagem-ativa">
+          <div>
+            <b>🛵 Você possui uma viagem em andamento!</b>
+            <small>${viagemAtiva.pedidos.length} pedidos em rota de entrega</small>
+          </div>
+          <a href="#/courier/trip" class="btn-retomar">Ver viagem atual →</a>
+        </div>
+      `
+          : ""
+      }
+
       <div class="hero-card">
         <div class="hero-header">
           <div class="hero-brand">
@@ -219,7 +242,7 @@ export function renderCourierAvailable(root) {
     </div>
   `;
 
-  // Configurar interatividade de seleção e trava atômica (RF-ENT-02 e RF-ENT-03)
+  // Configurar interatividade de seleção e trava atômica (RF-ENT-02, RF-ENT-03 e RF-ENT-04)
   configurarSelecaoEConcorrencia(courierId);
 }
 
@@ -285,17 +308,14 @@ function configurarSelecaoEConcorrencia(courierId) {
   function atualizarListaPedidos() {
     const pedidosProntos = listarPedidosProntos();
 
-    // Atualiza o contador de pedidos prontos no topo
     if (badgeProntosEl) {
       badgeProntosEl.textContent = `${pedidosProntos.length} prontos`;
     }
 
-    // Exibe ou oculta a dock inferior se não houver pedidos prontos
     if (dockInferiorEl) {
       dockInferiorEl.style.display = pedidosProntos.length === 0 ? "none" : "";
     }
 
-    // Recria os cards de pedidos prontos
     listaPedidosEl.innerHTML = gerarHtmlCards(pedidosProntos);
     vincularEventosCards();
     atualizarInterface();
@@ -304,17 +324,14 @@ function configurarSelecaoEConcorrencia(courierId) {
   function atualizarInterface() {
     const total = selecionados.size;
 
-    // Atualiza contador dinâmico (X de 3 selecionados)
     if (contadorEl) {
       contadorEl.textContent = total;
     }
 
-    // Botão Iniciar viagem desabilitado quando 0 selecionados
     if (btnIniciar) {
       btnIniciar.disabled = total === 0;
     }
 
-    // Atualiza visual de seleção nos cards
     const cards = listaPedidosEl.querySelectorAll(".order-card");
     cards.forEach((card) => {
       const id = card.getAttribute("data-id");
@@ -329,23 +346,22 @@ function configurarSelecaoEConcorrencia(courierId) {
       }
     });
 
-    // Salva seleção no LocalStorage
     localStorage.setItem("peddi_pedidos_selecionados", JSON.stringify(Array.from(selecionados)));
   }
 
-  // RF-ENT-03: Botão Iniciar viagem com conferência e trava atômica de reserva
+  // RF-ENT-03 e RF-ENT-04: Botão Iniciar viagem com trava atômica e criação da viagem ativa
   if (btnIniciar) {
     btnIniciar.addEventListener("click", () => {
       if (selecionados.size === 0) return;
 
-      const idsParaReservar = Array.from(selecionados);
+      const idsParaIniciar = Array.from(selecionados);
 
-      // Critério 1 e 3: O serviço confere se cada pedido está livre e aplica a regra "tudo ou nada"
-      const resultado = reservarPedidosAtomicamente(idsParaReservar, courierId);
+      // RF-ENT-04 Critério 1 e 2: Inicia a viagem, gera códigos de 4 dígitos e muda status para 'Saiu para entrega'
+      const resultado = iniciarViagem(idsParaIniciar, courierId);
 
       if (!resultado.sucesso) {
-        // Critério 2: Se outro pegou, aparece aviso e o pedido sai da seleção
-        const ocupados = resultado.ocupados;
+        // RF-ENT-03 Critério 2: Se outro pegou, aparece aviso e o pedido sai da seleção
+        const ocupados = resultado.ocupados || [];
         const plural = ocupados.length > 1;
         const mensagem = plural
           ? `Atenção: Os pedidos ${ocupados.join(", ")} já foram reservados por outro entregador e foram removidos da sua seleção!`
@@ -353,19 +369,18 @@ function configurarSelecaoEConcorrencia(courierId) {
 
         mostrarAviso(mensagem, "erro");
 
-        // Remove da seleção os pedidos que não estão mais disponíveis
+        // Remove da seleção os pedidos ocupados
         ocupados.forEach((id) => selecionados.delete(id));
 
-        // Atualiza a lista removendo pedidos que não estão mais com status Pronto livre
         atualizarListaPedidos();
         return;
       }
 
-      // Critério: Sucesso na reserva de todos os pedidos selecionados
-      mostrarAviso("Pedidos reservados com sucesso! Iniciando viagem...", "sucesso");
+      // RF-ENT-04: Sucesso ao iniciar a viagem!
+      mostrarAviso("Viagem iniciada com sucesso! Liberando rota...", "sucesso");
       setTimeout(() => {
         location.hash = "#/courier/trip";
-      }, 700);
+      }, 600);
     });
   }
 
@@ -377,7 +392,7 @@ function configurarSelecaoEConcorrencia(courierId) {
     });
   }
 
-  // Botão de simulação de concorrência (para testes / apresentação do RF-ENT-03)
+  // Botão de simulação de concorrência
   if (btnSimularConflito) {
     btnSimularConflito.addEventListener("click", () => {
       simularOutroEntregadorPegou("#1050", "ct_2");
@@ -395,9 +410,8 @@ function configurarSelecaoEConcorrencia(courierId) {
     });
   }
 
-  // Listener para sincronização automática entre abas ou eventos
+  // Sincronização automática
   window.addEventListener("peddi_pedidos_alterados", () => {
-    // Se algum pedido selecionado não estiver mais livre, remove da seleção
     const pedidos = obterPedidos();
     selecionados.forEach((id) => {
       const pedido = pedidos.find((p) => p.id === id);
@@ -414,7 +428,6 @@ function configurarSelecaoEConcorrencia(courierId) {
     }
   });
 
-  // Inicializa os eventos nos cards da lista inicial
   vincularEventosCards();
   atualizarInterface();
 }

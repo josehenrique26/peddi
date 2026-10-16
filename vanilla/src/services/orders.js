@@ -1,9 +1,10 @@
-// src/services/orders.js — Serviço de pedidos e reserva de viagens (RF-ENT-01, RF-ENT-02 e RF-ENT-03)
+// src/services/orders.js — Serviço de pedidos, reserva e viagens (RF-ENT-01 ao RF-ENT-04)
 
 export const CHAVE_PEDIDOS = "peddi_pedidos";
 export const CHAVE_SELECIONADOS = "peddi_pedidos_selecionados";
+export const CHAVE_VIAGEM = "peddi_viagem_atual";
 
-// Dados iniciais de demonstração para pedidos prontos
+// Dados iniciais de demonstração com endereço completo e complemento
 export const PEDIDOS_INICIAIS = [
   {
     id: "#1046",
@@ -13,7 +14,8 @@ export const PEDIDOS_INICIAIS = [
     itens: "2× Margherita",
     valor: "R$ 76,00",
     tempo: "há 21 min de espera",
-    endereco_completo: "Rua São Sebastião, 342, Saúde",
+    endereco_completo: "Rua São Sebastião, 342",
+    complemento: "Apto 42, bloco B",
     cliente: "Ana Beatriz Lima",
     telefone: "(11) 98765-4321",
   },
@@ -25,7 +27,8 @@ export const PEDIDOS_INICIAIS = [
     itens: "1× Calabresa especial",
     valor: "R$ 48,00",
     tempo: "há 8 min de espera",
-    endereco_completo: "Av. Bernardino de Campos, 120, Paraíso",
+    endereco_completo: "Av. Bernardino de Campos, 120",
+    complemento: "Conjunto 501",
     cliente: "Marcos Vinícius Rocha",
     telefone: "(11) 97654-3210",
   },
@@ -37,7 +40,8 @@ export const PEDIDOS_INICIAIS = [
     itens: "2× Portuguesa, 1× Guaraná 2 L",
     valor: "R$ 95,00",
     tempo: "há 15 min de espera",
-    endereco_completo: "Rua Bom Pastor, 800, Ipiranga",
+    endereco_completo: "Rua Bom Pastor, 800",
+    complemento: "Casa dos fundos",
     cliente: "Juliana Mendes",
     telefone: "(11) 96543-2109",
   },
@@ -49,7 +53,8 @@ export const PEDIDOS_INICIAIS = [
     itens: "1× Quatro Queijos, 1× Suco de laranja 400 ml",
     valor: "R$ 67,00",
     tempo: "há 33 min de espera",
-    endereco_completo: "Rua Domingos de Morais, 1500, Vila Mariana",
+    endereco_completo: "Rua Domingos de Morais, 1500",
+    complemento: "Apto 12",
     cliente: "Carlos Eduardo",
     telefone: "(11) 95432-1098",
   },
@@ -91,10 +96,6 @@ export function listarPedidosProntos() {
 
 /**
  * RF-ENT-03: Critério 1 - "Ao iniciar, o serviço confere se cada pedido ainda está livre"
- * Confere o estado atual de cada pedido pelo ID no LocalStorage.
- *
- * @param {string[]} idsPedidos - Lista de IDs dos pedidos a conferir (ex: ["#1046", "#1050"])
- * @returns {{ todosLivres: boolean, livres: object[], ocupados: object[] }}
  */
 export function conferirPedidosLivres(idsPedidos) {
   const pedidos = obterPedidos();
@@ -104,10 +105,6 @@ export function conferirPedidosLivres(idsPedidos) {
   for (const id of idsPedidos) {
     const pedido = pedidos.find((p) => p.id === id);
 
-    // O pedido está livre se:
-    // 1. Ele existe
-    // 2. O status ainda é "Pronto"
-    // 3. O campo entregador_id é nulo/vazio
     if (!pedido) {
       ocupados.push({ id, motivo: "inexistente" });
     } else if (pedido.status !== "Pronto" || Boolean(pedido.entregador_id)) {
@@ -131,25 +128,14 @@ export function conferirPedidosLivres(idsPedidos) {
 
 /**
  * RF-ENT-03: Trava de reserva atômica ("tudo ou nada")
- * Critérios atendidos:
- * - Ao iniciar, o serviço confere se cada pedido ainda está livre
- * - Se outro entregador pegou, a reserva é abortada para manter atomicidade
- * - Reserva é tudo ou nada: nenhum pedido é reservado se pelo menos um estiver ocupado
- *
- * @param {string[]} idsPedidos - IDs selecionados pelo entregador
- * @param {string} courierId - ID do entregador (ex: "ct_1" ou nome)
- * @returns {{ sucesso: boolean, motivo?: string, ocupados: string[], livres: string[], reservados?: string[] }}
  */
 export function reservarPedidosAtomicamente(idsPedidos, courierId = "ct_1") {
   if (!idsPedidos || idsPedidos.length === 0) {
     return { sucesso: false, motivo: "nenhum_pedido_selecionado", ocupados: [], livres: [] };
   }
 
-  // 1. Confere no armazenamento se TODOS os pedidos ainda estão livres
   const checagem = conferirPedidosLivres(idsPedidos);
 
-  // 2. Se houver qualquer pedido ocupado/indisponível:
-  // REGRA TUDO OU NADA: NÃO altera o banco, cancela a transação de reserva por completo!
   if (!checagem.todosLivres) {
     return {
       sucesso: false,
@@ -160,7 +146,6 @@ export function reservarPedidosAtomicamente(idsPedidos, courierId = "ct_1") {
     };
   }
 
-  // 3. Se TODOS estão 100% livres: realiza a reserva atômica de todos juntos
   const pedidos = obterPedidos();
   const pedidosAtualizados = pedidos.map((p) => {
     if (idsPedidos.includes(p.id)) {
@@ -174,8 +159,6 @@ export function reservarPedidosAtomicamente(idsPedidos, courierId = "ct_1") {
   });
 
   salvarPedidos(pedidosAtualizados);
-
-  // Persiste a seleção oficial da viagem para as próximas etapas
   localStorage.setItem(CHAVE_SELECIONADOS, JSON.stringify(idsPedidos));
 
   return {
@@ -186,8 +169,109 @@ export function reservarPedidosAtomicamente(idsPedidos, courierId = "ct_1") {
 }
 
 /**
- * Função utilitária para teste e demonstração:
- * Simula que outro entregador reservou um pedido simultaneamente.
+ * RF-ENT-04: Critério 2 - Gera um código numérico aleatório de 4 dígitos (ex.: "4829")
+ */
+export function gerarCodigo4Digitos() {
+  return String(Math.floor(1000 + Math.random() * 9000));
+}
+
+/**
+ * RF-ENT-04: Início da viagem
+ * Critérios atendidos:
+ * - 1. Cria a viagem em andamento e muda os pedidos para "Saiu para entrega"
+ * - 2. Gera um código de 4 dígitos por pedido
+ * - 3. Libera os dados completos no pedido
+ * - 5. Grava no LocalStorage para retomar caso o sistema seja reaberto
+ *
+ * @param {string[]} idsPedidos - IDs selecionados para a viagem
+ * @param {string} courierId - ID do entregador ativo
+ * @returns {{ sucesso: boolean, viagem?: object, motivo?: string }}
+ */
+export function iniciarViagem(idsPedidos, courierId = "ct_1") {
+  if (!idsPedidos || idsPedidos.length === 0) {
+    return { sucesso: false, motivo: "nenhum_pedido" };
+  }
+
+  // Primeiro faz a conferência atômica da reserva (RF-ENT-03)
+  const reserva = reservarPedidosAtomicamente(idsPedidos, courierId);
+  if (!reserva.sucesso) {
+    return reserva;
+  }
+
+  // Atualiza pedidos: status para "Saiu para entrega" e gera código de 4 dígitos
+  const todos = obterPedidos();
+  const pedidosAtualizados = todos.map((p) => {
+    if (idsPedidos.includes(p.id)) {
+      const codigo = p.codigo_entrega || gerarCodigo4Digitos();
+      return {
+        ...p,
+        status: "Saiu para entrega",
+        entregador_id: courierId,
+        codigo_entrega: codigo,
+        tentativas_restantes: 3,
+        saiu_em: new Date().toISOString(),
+      };
+    }
+    return p;
+  });
+
+  salvarPedidos(pedidosAtualizados);
+
+  // Cria a viagem em andamento
+  const viagem = {
+    id: "trip_" + Date.now(),
+    courierId,
+    status: "em_andamento",
+    pedidos: idsPedidos,
+    criada_em: new Date().toISOString(),
+  };
+
+  localStorage.setItem(CHAVE_VIAGEM, JSON.stringify(viagem));
+
+  return {
+    sucesso: true,
+    viagem,
+    pedidos: pedidosAtualizados.filter((p) => idsPedidos.includes(p.id)),
+  };
+}
+
+/**
+ * RF-ENT-04: Critério 5 - "Reabrir o sistema retoma a viagem atual"
+ * Retorna os dados da viagem atual se ela estiver em andamento.
+ */
+export function obterViagemAtual() {
+  const salvo = localStorage.getItem(CHAVE_VIAGEM);
+  if (!salvo) return null;
+
+  try {
+    const viagem = JSON.parse(salvo);
+    if (!viagem || viagem.status !== "em_andamento") return null;
+
+    // Busca os dados completos e atualizados de cada pedido da viagem
+    const todosPedidos = obterPedidos();
+    const pedidosDetalhados = viagem.pedidos
+      .map((id) => todosPedidos.find((p) => p.id === id))
+      .filter(Boolean);
+
+    return {
+      ...viagem,
+      pedidosDetalhados,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Finaliza a viagem atual
+ */
+export function finalizarViagem() {
+  localStorage.removeItem(CHAVE_VIAGEM);
+  localStorage.removeItem(CHAVE_SELECIONADOS);
+}
+
+/**
+ * Utilitário para testes: simula outro entregador pegando um pedido
  */
 export function simularOutroEntregadorPegou(pedidoId, outroEntregadorId = "ct_2") {
   const pedidos = obterPedidos();
