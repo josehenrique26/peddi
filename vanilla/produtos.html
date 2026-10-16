@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="src/styles/pages/produtos.css">
+    <title>Produtos | Peddi</title>
+</head>
+<body>
+    <main class="produtos-page">
+        <header class="cabecalho-produtos">
+            <div class="titulo-produtos">
+                <p class="kick">Estabelecimento</p>
+                <h1 class="h1">Produtos</h1>
+            </div>
+            <button id="btn-adicionar" class="btn-adicionar" type="submit">Adicionar produto</button>
+        </header>
+
+        <section class="secao-cadastro" aria-label="Cadastro de produto">
+            <form id="form-add" action="POST">
+                <div class="cabecalho-formulario">
+                    <p class="kick">Novo item</p>
+                    <h2>Cadastro de produto</h2>
+                </div>
+
+                <div class="campos-produto">
+                    <div class="campo-produto campo-imagem">
+                        <label for="img-produto">Imagem do produto</label>
+                        <input type="file" id="img-produto" accept="image/*" required>
+                    </div>
+
+                    <div class="campo-produto">
+                        <label for="nome-produto">Nome do produto</label>
+                        <input type="text" name="produto" id="nome-produto" placeholder="Ex.: Pizza margherita" required>
+                    </div>
+
+                    <div class="campo-produto campo-descricao">
+                        <label for="descricao">Descrição</label>
+                        <textarea id="descricao" rows="3" placeholder="Ingredientes ou detalhes do produto"></textarea>
+                    </div>
+                    <div class="campo-produto campo-preco">
+                        <label for="preco">Preço</label>
+                        <input type="number" id="preco" name="preco" placeholder="Ex.: 29.90" min="0.01" step="0.01" required>
+                    </div>
+                </div>
+
+                <div class="acoes-formulario">
+                    <button id="btn-enviar" class="btn-enviar" type="submit">Salvar produto</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="secao-cardapio" aria-label="Produtos cadastrados">
+            <div class="cabecalho-cardapio">
+                <div>
+                    <p class="kick">Cardápio</p>
+                    <h2>Produtos cadastrados</h2>
+                </div>
+            </div>
+            <ul id="cardapio" class="lista-produtos"></ul>
+        </section>
+    </main>
+    <script src="./src/services/produtos.js"></script>
+</body>
+</html>
