@@ -1,12 +1,10 @@
-// src/utils/routes.js — endereços das telas (uma .html por tela). Só aqui os nomes dos arquivos aparecem.
-const base = import.meta.env.BASE_URL; // "/" no dev, "/peddi/" no build
-
+// src/utils/routes.js — endereços das telas. Todas as .html ficam na raiz, então links relativos funcionam no dev e no build.
 export const rotas = {
-  inicio: () => base,
-  loja: (slug) => `${base}loja.html?empresa=${encodeURIComponent(slug)}`,
-  pedidos: () => `${base}pedidos.html`,
-  admin: () => `${base}admin.html`,
-  entregador: () => `${base}entregador.html`,
+  inicio: () => "index.html",
+  loja: (slug) => `loja.html?empresa=${encodeURIComponent(slug)}`,
+  admin: () => "admin.html",
+  pedidos: () => "pedidos.html",
+  entregador: () => "entregador.html",
 };
 
 export const rotaDoPerfil = {

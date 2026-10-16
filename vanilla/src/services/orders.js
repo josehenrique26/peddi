@@ -1,8 +1,25 @@
 // src/services/orders.js — Serviço de pedidos, reserva e viagens (RF-ENT-01 ao RF-ENT-04)
 
+import { obterDados } from "./storage.js";
+
 export const CHAVE_PEDIDOS = "peddi_pedidos";
 export const CHAVE_SELECIONADOS = "peddi_pedidos_selecionados";
 export const CHAVE_VIAGEM = "peddi_viagem_atual";
+
+export const pedidosDaEmpresa = (empresaId) => {
+  const dados = obterDados();
+  return Array.isArray(dados?.orders)
+    ? dados.orders.filter((p) => p.companyId === empresaId)
+    : [];
+};
+
+// Todas as movimentações (histórico) dos pedidos da empresa, da mais recente para a mais antiga.
+export function atividadesRecentes(empresaId, limite = 8) {
+  return pedidosDaEmpresa(empresaId)
+    .flatMap((pedido) => pedido.history.map((evento) => ({ pedido, evento })))
+    .sort((a, b) => b.evento.at - a.evento.at)
+    .slice(0, limite);
+}
 
 // Dados iniciais de demonstração com endereço completo e complemento
 export const PEDIDOS_INICIAIS = [
@@ -70,6 +87,7 @@ export function obterPedidos() {
     salvarPedidos(PEDIDOS_INICIAIS);
     return PEDIDOS_INICIAIS;
   }
+
   try {
     return JSON.parse(salvo);
   } catch {
@@ -82,7 +100,9 @@ export function obterPedidos() {
  */
 export function salvarPedidos(pedidos) {
   localStorage.setItem(CHAVE_PEDIDOS, JSON.stringify(pedidos));
-  window.dispatchEvent(new CustomEvent("peddi_pedidos_alterados", { detail: pedidos }));
+  window.dispatchEvent(
+    new CustomEvent("peddi_pedidos_alterados", { detail: pedidos }),
+  );
 }
 
 /**
@@ -90,7 +110,7 @@ export function salvarPedidos(pedidos) {
  */
 export function listarPedidosProntos() {
   return obterPedidos().filter(
-    (pedido) => pedido.status === "Pronto" && !pedido.entregador_id
+    (pedido) => pedido.status === "Pronto" && !pedido.entregador_id,
   );
 }
 
@@ -131,7 +151,12 @@ export function conferirPedidosLivres(idsPedidos) {
  */
 export function reservarPedidosAtomicamente(idsPedidos, courierId = "ct_1") {
   if (!idsPedidos || idsPedidos.length === 0) {
-    return { sucesso: false, motivo: "nenhum_pedido_selecionado", ocupados: [], livres: [] };
+    return {
+      sucesso: false,
+      motivo: "nenhum_pedido_selecionado",
+      ocupados: [],
+      livres: [],
+    };
   }
 
   const checagem = conferirPedidosLivres(idsPedidos);
@@ -247,7 +272,6 @@ export function obterViagemAtual() {
     const viagem = JSON.parse(salvo);
     if (!viagem || viagem.status !== "em_andamento") return null;
 
-    // Busca os dados completos e atualizados de cada pedido da viagem
     const todosPedidos = obterPedidos();
     const pedidosDetalhados = viagem.pedidos
       .map((id) => todosPedidos.find((p) => p.id === id))
@@ -273,7 +297,10 @@ export function finalizarViagem() {
 /**
  * Utilitário para testes: simula outro entregador pegando um pedido
  */
-export function simularOutroEntregadorPegou(pedidoId, outroEntregadorId = "ct_2") {
+export function simularOutroEntregadorPegou(
+  pedidoId,
+  outroEntregadorId = "ct_2",
+) {
   const pedidos = obterPedidos();
   const pedidosAtualizados = pedidos.map((p) => {
     if (p.id === pedidoId) {

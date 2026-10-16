@@ -3,7 +3,10 @@
 <html lang="pt-BR">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
     <title>Peddi — Pedidos mais simples. Restaurante mais forte.</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -16,7 +19,12 @@
     <a class="sr" href="#main">Ir para o conteúdo</a>
 
     <!-- Barra de demonstração: montada por src/components/demo-bar.js -->
-    <div class="demo" id="demo" role="region" aria-label="Controles de demonstração"></div>
+    <div
+      class="demo"
+      id="demo"
+      role="region"
+      aria-label="Controles de demonstração"
+    ></div>
 
     <main class="container" id="main">
       <section class="hero" aria-labelledby="h-hero">
@@ -24,25 +32,45 @@
           <span data-logo></span>
           <h1 id="h-hero">Pedidos mais simples. Restaurante mais forte.</h1>
           <p class="lead">
-            O Peddi organiza pedidos, cardápio e entregas de pizzarias, hamburguerias, marmitarias,
-            lanchonetes e doçarias. Cada empresa tem o seu próprio endereço: o cliente entra direto
-            no cardápio de quem ele escolheu.
+            O Peddi organiza pedidos, cardápio e entregas de pizzarias,
+            hamburguerias, marmitarias, lanchonetes e doçarias. Cada empresa tem
+            o seu próprio endereço: o cliente entra direto no cardápio de quem
+            ele escolheu.
           </p>
 
           <!-- Acesso do cliente por link ou código -->
           <div class="card access">
             <div class="seg" role="group" aria-label="Forma de acesso">
-              <button type="button" data-mode="link" aria-pressed="true"><span data-icon="route"></span>Link da empresa</button>
-              <button type="button" data-mode="code" aria-pressed="false"><span data-icon="key"></span>Código</button>
+              <button type="button" data-mode="link" aria-pressed="true">
+                <span data-icon="route"></span>Link da empresa
+              </button>
+              <button type="button" data-mode="code" aria-pressed="false">
+                <span data-icon="key"></span>Código
+              </button>
             </div>
             <form id="form-acesso" novalidate>
               <div class="access-row">
                 <div class="field">
-                  <label class="sr" for="f-ref" id="l-ref">Link da empresa</label>
-                  <input id="f-ref" name="ref" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" aria-describedby="e-ref" />
+                  <label class="sr" for="f-ref" id="l-ref"
+                    >Link da empresa</label
+                  >
+                  <input
+                    id="f-ref"
+                    name="ref"
+                    type="text"
+                    autocomplete="off"
+                    autocapitalize="off"
+                    spellcheck="false"
+                    aria-describedby="e-ref"
+                  />
                   <p class="err" id="e-ref" role="alert"></p>
                 </div>
-                <button class="btn btn-primary btn-lg" style="align-self: flex-start">Acessar cardápio</button>
+                <button
+                  class="btn btn-primary btn-lg"
+                  style="align-self: flex-start"
+                >
+                  Acessar cardápio
+                </button>
               </div>
             </form>
             <!-- Os exemplos clicáveis saem dos dados de demonstração -->
@@ -56,59 +84,100 @@
           <div class="row" style="justify-content: space-between">
             <div>
               <div class="muted small">Exemplo de comanda</div>
-              <div class="strong" style="font-family: var(--font-d); font-size: 1.25rem">PED-1042</div>
+              <div
+                class="strong"
+                style="font-family: var(--font-d); font-size: 1.25rem"
+              >
+                PED-1042
+              </div>
             </div>
-            <span class="badge b-orange"><span data-icon="bike" data-size="14"></span>Em entrega</span>
+            <span class="badge b-orange"
+              ><span data-icon="bike" data-size="14"></span>Em entrega</span
+            >
           </div>
           <div class="perf"></div>
           <ol class="ladder" id="ladder"></ol>
           <div class="perf"></div>
           <div class="row" style="justify-content: space-between">
             <span class="muted small">Código de entrega</span>
-            <span class="strong" style="font-family: var(--font-d); letter-spacing: 0.3em; font-size: 1.2rem">••••</span>
+            <span
+              class="strong"
+              style="
+                font-family: var(--font-d);
+                letter-spacing: 0.3em;
+                font-size: 1.2rem;
+              "
+              >••••</span
+            >
           </div>
         </aside>
       </section>
 
       <p class="notmk">
-        <strong>O Peddi não é um marketplace.</strong> Não existe vitrine de lojas nem carrinho misto:
-        cada empresa opera em um ambiente próprio, com cardápio, pedidos, taxa e entregadores separados.
+        <strong>O Peddi não é um marketplace.</strong> Não existe vitrine de
+        lojas nem carrinho misto: cada empresa opera em um ambiente próprio, com
+        cardápio, pedidos, taxa e entregadores separados.
       </p>
 
       <section aria-labelledby="h-demo">
-        <h2 id="h-demo" style="margin-bottom: 6px">Entre na demonstração por perfil</h2>
+        <h2 id="h-demo" style="margin-bottom: 6px">
+          Entre na demonstração por perfil
+        </h2>
         <p class="muted">
-          Três experiências sobre os mesmos dados. Um pedido feito pelo cliente aparece no
-          estabelecimento e, depois de pronto, no painel do entregador.
+          Três experiências sobre os mesmos dados. Um pedido feito pelo cliente
+          aparece no estabelecimento e, depois de pronto, no painel do
+          entregador.
         </p>
         <div class="profiles">
           <div class="card profile">
-            <span class="pi"><span data-icon="store" data-size="22"></span></span>
+            <span class="pi"
+              ><span data-icon="store" data-size="22"></span
+            ></span>
             <h3>Estabelecimento</h3>
-            <p>Dashboard, central de pedidos, cardápio, entregadores e configurações da empresa.</p>
+            <p>
+              Dashboard, central de pedidos, cardápio, entregadores e
+              configurações da empresa.
+            </p>
             <select id="d-company" aria-label="Empresa"></select>
-            <button class="btn btn-dark" data-enter="admin">Abrir painel</button>
+            <button class="btn btn-dark" data-enter="admin">
+              Abrir painel
+            </button>
           </div>
           <div class="card profile">
-            <span class="pi"><span data-icon="user" data-size="22"></span></span>
+            <span class="pi"
+              ><span data-icon="user" data-size="22"></span
+            ></span>
             <h3>Cliente</h3>
-            <p>Compra pelo link ou código de uma empresa e acompanha o pedido até a entrega. Use o campo acima para entrar em um cardápio.</p>
+            <p>
+              Compra pelo link ou código de uma empresa e acompanha o pedido até
+              a entrega. Use o campo acima para entrar em um cardápio.
+            </p>
             <select id="d-customer" aria-label="Cliente"></select>
-            <button class="btn btn-dark" data-enter="cliente">Ver meus pedidos</button>
+            <button class="btn btn-dark" data-enter="cliente">
+              Ver meus pedidos
+            </button>
           </div>
           <div class="card profile">
-            <span class="pi"><span data-icon="bike" data-size="22"></span></span>
+            <span class="pi"
+              ><span data-icon="bike" data-size="22"></span
+            ></span>
             <h3>Entregador</h3>
-            <p>Monta viagens com até três pedidos prontos da própria empresa e confirma cada entrega pelo código.</p>
+            <p>
+              Monta viagens com até três pedidos prontos da própria empresa e
+              confirma cada entrega pelo código.
+            </p>
             <select id="d-courier" aria-label="Entregador"></select>
-            <button class="btn btn-dark" data-enter="entregador">Abrir painel</button>
+            <button class="btn btn-dark" data-enter="entregador">
+              Abrir painel
+            </button>
           </div>
         </div>
       </section>
 
       <p class="muted small limits">
-        Limites desta versão: os dados ficam apenas neste navegador, sem login real, banco remoto,
-        pagamentos, notificações ou mapas. O pagamento é sempre simulado.
+        Limites desta versão: os dados ficam apenas neste navegador, sem login
+        real, banco remoto, pagamentos, notificações ou mapas. O pagamento é
+        sempre simulado.
       </p>
     </main>
 

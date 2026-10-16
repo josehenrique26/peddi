@@ -1,8 +1,7 @@
 // src/components/demo-bar.js — barra de demonstração (troca de perfil, tema, reiniciar dados).
-import { h } from "../utils/dom.js";
-import { icone } from "./icon.js";
 import { marcaLogo } from "./logo.js";
 import { alternarTema } from "../utils/theme.js";
+import { preencherSelect } from "../utils/select.js";
 import { rotas, rotaDoPerfil, navegar } from "../utils/routes.js";
 import { armazenamentoOk, lerSessao, gravarSessao, reiniciarDados } from "../services/storage.js";
 import { listarEmpresas, listarClientes, listarEntregadores, obterEmpresa } from "../services/companies.js";
@@ -13,50 +12,64 @@ const PERFIS = [
   ["entregador", "Entregador", "bike"],
 ];
 
-// Seletor da entidade em demonstração (empresa, cliente ou entregador), conforme o perfil atual.
-function seletorDaEntidade(sessao) {
-  const config = {
+// Para cada perfil: qual campo da sessão guarda a escolha, o rótulo do select e as opções.
+function configDoSeletor(perfil) {
+  return {
     admin: ["companyId", "Empresa em demonstração", listarEmpresas().map((c) => [c.id, c.name + (c.active ? "" : " (inativa)")])],
     cliente: ["customerId", "Cliente em demonstração", listarClientes().map((c) => [c.id, c.name])],
     entregador: ["courierId", "Entregador em demonstração", listarEntregadores().map((c) => [c.id, `${c.name} · ${obterEmpresa(c.companyId)?.name ?? ""}${c.active ? "" : " (inativo)"}`])],
-  }[sessao.role];
-  if (!config) return null;
-
-  const [campo, rotulo, opcoes] = config;
-  return h("select", {
-    "aria-label": rotulo,
-    onchange: (e) => gravarSessao({ ...lerSessao(), [campo]: e.target.value }),
-  }, opcoes.map(([valor, texto]) => h("option", { value: valor, selected: valor === sessao[campo] }, texto)));
+  }[perfil];
 }
 
 export function montarBarraDemo(container) {
   const sessao = lerSessao();
+  const config = configDoSeletor(sessao.role);
 
-  const botoesPerfil = PERFIS.map(([perfil, rotulo, nomeIcone]) =>
-    h("button", {
-      type: "button",
-      "aria-pressed": String(sessao.role === perfil),
-      onclick: () => { gravarSessao({ ...lerSessao(), role: perfil }); navegar(rotaDoPerfil[perfil]()); },
-    }, icone(nomeIcone, 16), rotulo));
+  const botoesPerfil = PERFIS.map(([perfil, rotulo, nomeIcone]) => `
+    <button type="button" aria-pressed="${sessao.role === perfil}" data-perfil="${perfil}">
+      <span data-icon="${nomeIcone}" data-size="16"></span> ${rotulo}
+    </button>`).join("");
 
-  container.replaceChildren(
-    h("div", { class: "demo-in" },
-      h("a", { class: "home", href: rotas.inicio(), "aria-label": "Peddi — início" }, marcaLogo(24), " Peddi"),
-      h("span", { class: "tag" }, "Modo demonstração: troca de perfil, sem autenticação real"),
-      h("div", { class: "seg", role: "group", "aria-label": "Perfil de demonstração" }, botoesPerfil),
-      seletorDaEntidade(sessao),
-      h("button", { type: "button", class: "dbtn", onclick: alternarTema }, icone("moon", 15), "Tema"),
-      h("button", {
-        type: "button", class: "dbtn",
-        onclick: () => {
-          // Provisório: window.confirm. Será trocado pelo componente modal.js.
-          if (confirm("Reiniciar dados de demonstração? Tudo o que foi feito neste navegador será substituído pelos dados iniciais.")) {
-            reiniciarDados();
-            location.assign(rotas.inicio());
-          }
-        },
-      }, icone("refresh", 15), "Reiniciar dados"),
-      armazenamentoOk ? null : h("span", { class: "badge b-amber" }, "Armazenamento do navegador indisponível: dados não serão mantidos"),
-    ),
-  );
+  // O <select> nasce vazio; as <option> são criadas com createElement logo abaixo.
+  const seletorHTML = config ? `<select id="demo-seletor" aria-label="${config[1]}"></select>` : "";
+  const aviso = armazenamentoOk ? "" : `<span class="badge b-amber">Armazenamento do navegador indisponível: dados não serão mantidos</span>`;
+
+  container.innerHTML = `
+    <div class="demo-in">
+      <a class="home" href="${rotas.inicio()}" aria-label="Peddi — início">${marcaLogo(24)} Peddi</a>
+      <span class="tag">Modo demonstração: troca de perfil, sem autenticação real</span>
+      <div class="seg" role="group" aria-label="Perfil de demonstração">${botoesPerfil}</div>
+      ${seletorHTML}
+      <button type="button" class="dbtn" id="btn-tema"><span data-icon="moon" data-size="15"></span> Tema</button>
+      <button type="button" class="dbtn" id="btn-reiniciar"><span data-icon="refresh" data-size="15"></span> Reiniciar dados</button>
+      ${aviso}
+    </div>`;
+
+  // Select da empresa/cliente/entregador
+  const seletor = container.querySelector("#demo-seletor");
+  if (seletor) {
+    const [campo, , opcoes] = config;
+    preencherSelect(seletor, opcoes, sessao[campo]);
+    seletor.addEventListener("change", () => {
+      gravarSessao({ ...lerSessao(), [campo]: seletor.value });
+      location.reload();
+    });
+  }
+
+  // Botões de troca de perfil
+  container.querySelectorAll("[data-perfil]").forEach((botao) => {
+    botao.addEventListener("click", () => {
+      gravarSessao({ ...lerSessao(), role: botao.dataset.perfil });
+      navegar(rotaDoPerfil[botao.dataset.perfil]());
+    });
+  });
+
+  container.querySelector("#btn-tema").addEventListener("click", alternarTema);
+
+  container.querySelector("#btn-reiniciar").addEventListener("click", () => {
+    if (confirm("Reiniciar dados de demonstração? Tudo o que foi feito neste navegador será substituído pelos dados iniciais.")) {
+      reiniciarDados();
+      location.assign(rotas.inicio());
+    }
+  });
 }
