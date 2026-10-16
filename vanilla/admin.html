@@ -1,0 +1,68 @@
+<!doctype html>
+<!-- admin.html — Dashboard do estabelecimento. Esqueleto em HTML; src/pages/admin-dashboard.js preenche os dados. -->
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Dashboard · Peddi</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <a class="sr" href="#main">Ir para o conteúdo</a>
+    <div class="demo" id="demo" role="region" aria-label="Controles de demonstração"></div>
+
+    <div class="adm">
+      <!-- Menu lateral: montado por src/components/admin-shell.js -->
+      <aside class="side" id="menu-lateral" aria-label="Navegação do estabelecimento"></aside>
+      <div class="scrim" id="scrim"></div>
+
+      <div class="adm-main" id="main">
+        <div class="adm-top">
+          <button class="icon-btn burger" id="abrir-menu" type="button" aria-label="Abrir menu" aria-expanded="false"></button>
+          <h1 class="grow">Dashboard</h1>
+          <div class="atalhos" id="atalhos"></div>
+        </div>
+
+        <div id="aviso-inativa"></div>
+
+        <!-- Cards do dia -->
+        <section aria-labelledby="h-cards">
+          <h2 class="sr" id="h-cards">Resumo do dia</h2>
+          <div class="kpis" id="kpis"></div>
+        </section>
+
+        <!-- Gráfico de intensidade de pedidos -->
+        <section class="panel chart-panel" aria-labelledby="h-grafico">
+          <div class="panel-hd">
+            <div>
+              <h3 id="h-grafico">Intensidade de pedidos</h3>
+              <span class="muted small" id="resumo-grafico"></span>
+            </div>
+            <div class="chart-ctrl">
+              <div class="seg" role="group" aria-label="Período do gráfico" id="periodo"></div>
+              <div class="seg" role="group" aria-label="Forma de exibição" id="visao"></div>
+            </div>
+          </div>
+          <div class="chart" id="grafico"></div>
+          <div class="chart-table-wrap" id="tabela" hidden></div>
+        </section>
+
+        <!-- Atividade recente -->
+        <section class="panel" aria-labelledby="h-atividade">
+          <div class="panel-hd">
+            <h3 id="h-atividade">Atividade recente</h3>
+            <a class="small" id="ver-pedidos" href="#">Ver pedidos</a>
+          </div>
+          <div id="atividade"></div>
+        </section>
+      </div>
+    </div>
+
+    <script type="module" src="/src/pages/admin-dashboard.js"></script>
+  </body>
+</html>

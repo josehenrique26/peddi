@@ -51,12 +51,16 @@ function montarExemplos() {
   const [primeira, segunda] = ativas;
 
   $("#ex-validos").append(
-    primeira && chip(`peddi.app/${primeira.slug}`, "link", `peddi.app/${primeira.slug}`),
-    segunda && chip(`código ${segunda.code}`, "code", segunda.code),
+    ...[
+      primeira && chip(`peddi.app/${primeira.slug}`, "link", `peddi.app/${primeira.slug}`),
+      segunda && chip(`código ${segunda.code}`, "code", segunda.code),
+    ].filter(Boolean),
   );
   $("#ex-erros").append(
-    chip("código inexistente", "code", "XYZ000"),
-    inativa && chip("empresa inativa", "code", inativa.code),
+    ...[
+      chip("código inexistente", "code", "XYZ000"),
+      inativa && chip("empresa inativa", "code", inativa.code),
+    ].filter(Boolean),
   );
 }
 

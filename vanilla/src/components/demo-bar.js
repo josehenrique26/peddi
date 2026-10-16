@@ -25,7 +25,7 @@ function seletorDaEntidade(sessao) {
   const [campo, rotulo, opcoes] = config;
   return h("select", {
     "aria-label": rotulo,
-    onchange: (e) => gravarSessao({ ...lerSessao(), [campo]: e.target.value }),
+    onchange: (e) => { gravarSessao({ ...lerSessao(), [campo]: e.target.value }); location.reload(); },
   }, opcoes.map(([valor, texto]) => h("option", { value: valor, selected: valor === sessao[campo] }, texto)));
 }
 

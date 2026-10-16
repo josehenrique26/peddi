@@ -6,6 +6,10 @@ export const rotas = {
   loja: (slug) => `${base}loja.html?empresa=${encodeURIComponent(slug)}`,
   pedidos: () => `${base}pedidos.html`,
   admin: () => `${base}admin.html`,
+  adminPedidos: () => `${base}admin-pedidos.html`,
+  adminCardapio: () => `${base}admin-cardapio.html`,
+  adminEntregadores: () => `${base}admin-entregadores.html`,
+  adminConfig: () => `${base}admin-config.html`,
   entregador: () => `${base}entregador.html`,
 };
 
