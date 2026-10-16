@@ -1,4 +1,13 @@
-// Tela: Pedidos 'Prontos' sem endereço completo (RF-ENT-01 e RF-ENT-02).
+// src/pages/courier-available.js — Pedidos 'Prontos' sem endereço completo (RF-ENT-01, RF-ENT-02 e RF-ENT-03).
+import {
+  obterPedidos,
+  listarPedidosProntos,
+  reservarPedidosAtomicamente,
+  simularOutroEntregadorPegou,
+  salvarPedidos,
+  PEDIDOS_INICIAIS,
+} from "../services/orders.js";
+import { lerSessao } from "../services/storage.js";
 
 const ESTILOS_ID = "peddi-courier-styles";
 
@@ -25,12 +34,12 @@ function injetarEstilos() {
     body { font-family: var(--font-family); background-color: var(--bg-color); color: var(--text-main); }
     .topbar { background-color: var(--dark-bg); color: #fff; display: flex; justify-content: space-between; padding: 10px 20px; font-size: 0.85rem; align-items: center; flex-wrap: wrap; gap: 10px; }
     .topbar-left { display: flex; align-items: center; gap: 10px; }
-    .logo-icon-small { background: var(--primary-color); color: #fff; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
+    .logo-icon-small { background: var(--primary-color); color: #fff; padding: 2px 6px; border-radius: 4px; font-weight: bold; text-decoration: none; }
     .topbar-nav { display: flex; gap: 8px; }
     .btn-nav { background: transparent; color: #aaa; border: 1px solid #444; padding: 6px 12px; border-radius: 6px; cursor: pointer; text-decoration: none; font-size: 0.85rem; }
     .btn-nav:hover { color: #fff; border-color: #666; }
     .btn-nav.active { background: var(--primary-color); color: #fff; border-color: var(--primary-color); }
-    .topbar-right { display: flex; gap: 10px; }
+    .topbar-right { display: flex; gap: 10px; align-items: center; }
     .container { max-width: 600px; margin: 20px auto; padding: 0 16px 140px 16px; }
     .hero-card { background-color: var(--dark-bg); color: #fff; padding: 20px; border-radius: 12px; margin-bottom: 25px; }
     .hero-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
@@ -38,7 +47,7 @@ function injetarEstilos() {
     .status-badge { background: var(--green-bg); color: var(--green-text); padding: 4px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; }
     .hero-body { font-size: 0.9rem; color: #aaa; }
     .hero-body h2 { color: #fff; font-size: 1.8rem; margin: 5px 0; }
-    .section-header { margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end; }
+    .section-header { margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 10px; }
     .section-header h3 { font-size: 1.4rem; margin-bottom: 4px; color: var(--text-main); }
     .section-header p { color: var(--text-muted); font-size: 0.9rem; }
     .badge-count { background: #e2e8f0; color: #334155; padding: 4px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; white-space: nowrap; }
@@ -59,7 +68,7 @@ function injetarEstilos() {
     .empty-state { background: #fff; border: 1px dashed var(--border-color); border-radius: 12px; padding: 40px 20px; text-align: center; color: var(--text-muted); }
     .empty-state p { font-size: 1rem; margin-top: 8px; }
 
-    /* RF-ENT-02: Barra de ação inferior fixa com contador */
+    /* Barra de ação inferior fixa com contador (RF-ENT-02) */
     .fixed-bottom { position: fixed; bottom: 0; left: 0; width: 100%; display: flex; flex-direction: column; align-items: center; pointer-events: none; z-index: 100; }
     .action-bar { background: var(--dark-bg); color: #fff; padding: 14px 20px; border-radius: 12px; width: calc(100% - 32px); max-width: 560px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; pointer-events: auto; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25); }
     .action-bar-counter { font-size: 0.95rem; color: #cbd5e1; }
@@ -71,8 +80,16 @@ function injetarEstilos() {
     .btn-start-trip:hover:not(:disabled) { opacity: 0.92; transform: translateY(-1px); }
     .btn-start-trip:disabled { opacity: 0.35; cursor: not-allowed; }
 
-    /* RF-ENT-02: Aviso flutuante para recusa do 4º pedido */
-    .aviso-limite { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background-color: #dc2626; color: #fff; padding: 12px 22px; border-radius: 8px; font-weight: 600; font-size: 0.9rem; box-shadow: 0 4px 16px rgba(220, 38, 38, 0.35); z-index: 1000; display: flex; align-items: center; gap: 10px; animation: slideDown 0.25s ease; }
+    /* Avisos flutuantes (RF-ENT-02 e RF-ENT-03) */
+    .aviso-flutuante { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); color: #fff; padding: 12px 22px; border-radius: 8px; font-weight: 600; font-size: 0.9rem; z-index: 1000; display: flex; align-items: center; gap: 10px; animation: slideDown 0.25s ease; max-width: 90%; }
+    .aviso-erro { background-color: #dc2626; box-shadow: 0 4px 16px rgba(220, 38, 38, 0.35); }
+    .aviso-sucesso { background-color: #16a34a; box-shadow: 0 4px 16px rgba(22, 163, 74, 0.35); }
+    
+    /* Barra de simulação / testes em modo demonstração */
+    .demo-actions { margin-top: 10px; padding: 10px 14px; background: #fff; border: 1px dashed #cbd5e1; border-radius: 8px; font-size: 0.82rem; color: #64748b; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+    .btn-test { background: #f1f5f9; border: 1px solid #cbd5e1; color: #334155; padding: 4px 10px; border-radius: 6px; font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: all 0.15s ease; }
+    .btn-test:hover { background: #e2e8f0; }
+
     @keyframes slideDown {
       from { opacity: 0; transform: translate(-50%, -12px); }
       to { opacity: 1; transform: translate(-50%, 0); }
@@ -81,88 +98,60 @@ function injetarEstilos() {
   document.head.appendChild(style);
 }
 
-// Dados iniciais com pedidos fictícios respeitando o modelo de dados
-const DADOS_INICIAIS = [
-  {
-    id: "#1046",
-    status: "Pronto",
-    entregador_id: null,
-    bairro: "Saúde",
-    itens: "2× Margherita",
-    valor: "R$ 76,00",
-    tempo: "há 21 min de espera",
-    endereco_completo: "Rua São Sebastião, 342, Saúde",
-    cliente: "Ana Beatriz Lima",
-    telefone: "(11) 98765-4321"
-  },
-  {
-    id: "#1050",
-    status: "Pronto",
-    entregador_id: null,
-    bairro: "Paraíso",
-    itens: "1× Calabresa especial",
-    valor: "R$ 48,00",
-    tempo: "há 8 min de espera",
-    endereco_completo: "Av. Bernardino de Campos, 120, Paraíso",
-    cliente: "Marcos Vinícius Rocha",
-    telefone: "(11) 97654-3210"
-  },
-  {
-    id: "#1051",
-    status: "Pronto",
-    entregador_id: null,
-    bairro: "Ipiranga",
-    itens: "2× Portuguesa, 1× Guaraná 2 L",
-    valor: "R$ 95,00",
-    tempo: "há 15 min de espera",
-    endereco_completo: "Rua Bom Pastor, 800, Ipiranga",
-    cliente: "Juliana Mendes",
-    telefone: "(11) 96543-2109"
-  },
-  {
-    id: "#1052",
-    status: "Pronto",
-    entregador_id: null,
-    bairro: "Vila Mariana",
-    itens: "1× Quatro Queijos, 1× Suco de laranja 400 ml",
-    valor: "R$ 67,00",
-    tempo: "há 33 min de espera",
-    endereco_completo: "Rua Domingos de Morais, 1500, Vila Mariana",
-    cliente: "Carlos Eduardo",
-    telefone: "(11) 95432-1098"
+function gerarHtmlCards(pedidos) {
+  if (pedidos.length === 0) {
+    return `
+      <div class="empty-state">
+        <span style="font-size: 2rem;">📦</span>
+        <p>Nenhum pedido pronto no momento.</p>
+        <small style="color: #999;">Novos pedidos prontos aparecerão aqui automaticamente.</small>
+      </div>
+    `;
   }
-];
 
-function obterPedidos() {
-  const salvo = localStorage.getItem("peddi_pedidos");
-  if (!salvo) {
-    localStorage.setItem("peddi_pedidos", JSON.stringify(DADOS_INICIAIS));
-    return DADOS_INICIAIS;
-  }
-  try {
-    return JSON.parse(salvo);
-  } catch {
-    return DADOS_INICIAIS;
-  }
+  return pedidos
+    .map(
+      (pedido) => `
+    <div class="order-card" data-id="${pedido.id}">
+      <div class="checkbox-container">
+        <input type="checkbox" data-order-id="${pedido.id}" aria-label="Selecionar pedido ${pedido.id}" />
+      </div>
+      <div class="order-content">
+        <div class="order-top">
+          <span class="order-id">${pedido.id}</span>
+          <span class="tag-pronto">Pronto</span>
+        </div>
+        <!-- RF-ENT-01: Exibir apenas o bairro. Nome, telefone e endereço completo permanecem ocultos. -->
+        <div class="order-bairro">
+          <span>📍</span>
+          <span>${pedido.bairro}</span>
+        </div>
+        <div class="order-items">${pedido.itens}</div>
+        <div class="order-footer">
+          <span class="price">${pedido.valor}</span>
+          <span>${pedido.tempo}</span>
+        </div>
+      </div>
+    </div>
+  `
+    )
+    .join("");
 }
 
 export function renderCourierAvailable(root) {
   injetarEstilos();
 
-  const todosPedidos = obterPedidos();
-
-  // RF-ENT-01: Filtrar apenas pedidos com status "Pronto" e sem entregador atribuído
-  const pedidosProntos = todosPedidos.filter(
-    (pedido) => pedido.status === "Pronto" && !pedido.entregador_id
-  );
+  const sessao = lerSessao();
+  const courierId = sessao.courierId || "ct_1";
+  const pedidosProntos = listarPedidosProntos();
 
   root.innerHTML = `
-    <!-- Container para avisos visuais (ex: limite de pedidos atingido) -->
+    <!-- Container para avisos flutuantes (RF-ENT-02 e RF-ENT-03) -->
     <div id="container-aviso" style="display: none;"></div>
 
     <header class="topbar">
       <div class="topbar-left">
-        <span class="logo-icon-small">P</span>
+        <a href="#/" class="logo-icon-small">P</a>
         <span><b>Peddi</b> Modo demonstração: troca de perfil</span>
       </div>
       <nav class="topbar-nav">
@@ -195,117 +184,138 @@ export function renderCourierAvailable(root) {
           <h3>Prontos para retirada</h3>
           <p>Selecione de 1 a 3 pedidos para montar sua viagem.</p>
         </div>
-        <span class="badge-count">${pedidosProntos.length} prontos</span>
+        <span id="badge-contador-prontos" class="badge-count">${pedidosProntos.length} prontos</span>
       </div>
 
-      <div id="lista-pedidos">
-        ${
-          pedidosProntos.length === 0
-            ? `
-              <div class="empty-state">
-                <span style="font-size: 2rem;">📦</span>
-                <p>Nenhum pedido pronto no momento.</p>
-                <small style="color: #999;">Novos pedidos prontos aparecerão aqui automaticamente.</small>
-              </div>
-            `
-            : pedidosProntos
-                .map(
-                  (pedido) => `
-              <div class="order-card" data-id="${pedido.id}">
-                <div class="checkbox-container">
-                  <input type="checkbox" data-order-id="${pedido.id}" aria-label="Selecionar pedido ${pedido.id}" />
-                </div>
-                <div class="order-content">
-                  <div class="order-top">
-                    <span class="order-id">${pedido.id}</span>
-                    <span class="tag-pronto">Pronto</span>
-                  </div>
-                  <!-- RF-ENT-01: Exibir apenas o bairro. Nome, telefone e endereço completo permanecem ocultos. -->
-                  <div class="order-bairro">
-                    <span>📍</span>
-                    <span>${pedido.bairro}</span>
-                  </div>
-                  <div class="order-items">${pedido.itens}</div>
-                  <div class="order-footer">
-                    <span class="price">${pedido.valor}</span>
-                    <span>${pedido.tempo}</span>
-                  </div>
-                </div>
-              </div>
-            `
-                )
-                .join("")
-        }
+      <!-- Demonstração do RF-ENT-03: Simular concorrência -->
+      <div class="demo-actions">
+        <span>🧪 <b>Teste RF-ENT-03:</b> Simular outro entregador pegando pedido</span>
+        <button id="btn-simular-conflito" class="btn-test" type="button">
+          Simular outro pegando #1050
+        </button>
+        <button id="btn-resetar-pedidos" class="btn-test" type="button">
+          Resetar pedidos
+        </button>
+      </div>
+
+      <div id="lista-pedidos" style="margin-top: 14px;">
+        ${gerarHtmlCards(pedidosProntos)}
       </div>
     </main>
 
     <!-- RF-ENT-02: Barra de ação fixa inferior com contador e botão de iniciar -->
-    ${
-      pedidosProntos.length > 0
-        ? `
-      <div class="fixed-bottom">
-        <div class="action-bar">
-          <span class="action-bar-counter">
-            <b id="contador-selecionados">0</b> de 3 selecionados
-          </span>
-          <div class="action-buttons">
-            <button id="btn-limpar" class="btn-clear" type="button">Limpar</button>
-            <button id="btn-iniciar" class="btn-start-trip" type="button" disabled>
-              Iniciar viagem 🛵
-            </button>
-          </div>
+    <div id="dock-inferior" class="fixed-bottom" style="${pedidosProntos.length === 0 ? "display: none;" : ""}">
+      <div class="action-bar">
+        <span class="action-bar-counter">
+          <b id="contador-selecionados">0</b> de 3 selecionados
+        </span>
+        <div class="action-buttons">
+          <button id="btn-limpar" class="btn-clear" type="button">Limpar</button>
+          <button id="btn-iniciar" class="btn-start-trip" type="button" disabled>
+            Iniciar viagem 🛵
+          </button>
         </div>
       </div>
-    `
-        : ""
-    }
+    </div>
   `;
 
-  // Configurar interatividade de seleção (RF-ENT-02)
-  if (pedidosProntos.length > 0) {
-    configurarSelecao();
-  }
+  // Configurar interatividade de seleção e trava atômica (RF-ENT-02 e RF-ENT-03)
+  configurarSelecaoEConcorrencia(courierId);
 }
 
-// RF-ENT-02: Lógica de seleção, contador dinâmico, trava do 4º pedido e botão habilitado/desabilitado
-function configurarSelecao() {
+function configurarSelecaoEConcorrencia(courierId) {
   const selecionados = new Set();
   const contadorEl = document.getElementById("contador-selecionados");
   const btnIniciar = document.getElementById("btn-iniciar");
   const btnLimpar = document.getElementById("btn-limpar");
   const containerAviso = document.getElementById("container-aviso");
-  const cards = document.querySelectorAll(".order-card");
+  const listaPedidosEl = document.getElementById("lista-pedidos");
+  const badgeProntosEl = document.getElementById("badge-contador-prontos");
+  const dockInferiorEl = document.getElementById("dock-inferior");
+  const btnSimularConflito = document.getElementById("btn-simular-conflito");
+  const btnResetar = document.getElementById("btn-resetar-pedidos");
 
   let timeoutAviso = null;
 
-  function mostrarAviso(msg) {
+  function mostrarAviso(msg, tipo = "erro") {
     if (timeoutAviso) clearTimeout(timeoutAviso);
+    const classeTipo = tipo === "sucesso" ? "aviso-sucesso" : "aviso-erro";
+    const icone = tipo === "sucesso" ? "✅" : "⚠️";
+
     containerAviso.innerHTML = `
-      <div class="aviso-limite">
-        <span>⚠️</span>
+      <div class="aviso-flutuante ${classeTipo}">
+        <span>${icone}</span>
         <span>${msg}</span>
       </div>
     `;
     containerAviso.style.display = "block";
     timeoutAviso = setTimeout(() => {
       containerAviso.style.display = "none";
-    }, 3500);
+    }, 4500);
+  }
+
+  function vincularEventosCards() {
+    const cards = listaPedidosEl.querySelectorAll(".order-card");
+    cards.forEach((card) => {
+      const id = card.getAttribute("data-id");
+      const checkbox = card.querySelector('input[type="checkbox"]');
+
+      card.addEventListener("click", (event) => {
+        const clicouDiretamenteNoCheckbox = event.target === checkbox;
+
+        if (selecionados.has(id)) {
+          selecionados.delete(id);
+        } else {
+          // RF-ENT-02: Limite máximo de 3 pedidos
+          if (selecionados.size >= 3) {
+            if (clicouDiretamenteNoCheckbox) {
+              checkbox.checked = false;
+            }
+            mostrarAviso("Limite atingido: você só pode selecionar até 3 pedidos por viagem!");
+            return;
+          }
+          selecionados.add(id);
+        }
+
+        atualizarInterface();
+      });
+    });
+  }
+
+  function atualizarListaPedidos() {
+    const pedidosProntos = listarPedidosProntos();
+
+    // Atualiza o contador de pedidos prontos no topo
+    if (badgeProntosEl) {
+      badgeProntosEl.textContent = `${pedidosProntos.length} prontos`;
+    }
+
+    // Exibe ou oculta a dock inferior se não houver pedidos prontos
+    if (dockInferiorEl) {
+      dockInferiorEl.style.display = pedidosProntos.length === 0 ? "none" : "";
+    }
+
+    // Recria os cards de pedidos prontos
+    listaPedidosEl.innerHTML = gerarHtmlCards(pedidosProntos);
+    vincularEventosCards();
+    atualizarInterface();
   }
 
   function atualizarInterface() {
     const total = selecionados.size;
 
-    // Critério: Contador dinâmico (X de 3 selecionados)
+    // Atualiza contador dinâmico (X de 3 selecionados)
     if (contadorEl) {
       contadorEl.textContent = total;
     }
 
-    // Critério: Iniciar viagem desabilitado sem seleção
+    // Botão Iniciar viagem desabilitado quando 0 selecionados
     if (btnIniciar) {
       btnIniciar.disabled = total === 0;
     }
 
-    // Atualiza estado visual de cada card e checkbox
+    // Atualiza visual de seleção nos cards
+    const cards = listaPedidosEl.querySelectorAll(".order-card");
     cards.forEach((card) => {
       const id = card.getAttribute("data-id");
       const checkbox = card.querySelector('input[type="checkbox"]');
@@ -319,38 +329,45 @@ function configurarSelecao() {
       }
     });
 
-    // Salva a seleção no localStorage para as próximas etapas (viagem)
+    // Salva seleção no LocalStorage
     localStorage.setItem("peddi_pedidos_selecionados", JSON.stringify(Array.from(selecionados)));
   }
 
-  cards.forEach((card) => {
-    const id = card.getAttribute("data-id");
-    const checkbox = card.querySelector('input[type="checkbox"]');
+  // RF-ENT-03: Botão Iniciar viagem com conferência e trava atômica de reserva
+  if (btnIniciar) {
+    btnIniciar.addEventListener("click", () => {
+      if (selecionados.size === 0) return;
 
-    // Ao clicar no card (ou diretamente no checkbox)
-    card.addEventListener("click", (event) => {
-      // Se clicou diretamente no input, o evento padrão já inverte o checked
-      const clicouDiretamenteNoCheckbox = event.target === checkbox;
+      const idsParaReservar = Array.from(selecionados);
 
-      if (selecionados.has(id)) {
-        // Desmarcar
-        selecionados.delete(id);
-      } else {
-        // Critério: Quarto pedido recusado com aviso
-        if (selecionados.size >= 3) {
-          if (clicouDiretamenteNoCheckbox) {
-            checkbox.checked = false;
-          }
-          mostrarAviso("Limite atingido: você só pode selecionar até 3 pedidos por viagem!");
-          return;
-        }
-        // Marcar
-        selecionados.add(id);
+      // Critério 1 e 3: O serviço confere se cada pedido está livre e aplica a regra "tudo ou nada"
+      const resultado = reservarPedidosAtomicamente(idsParaReservar, courierId);
+
+      if (!resultado.sucesso) {
+        // Critério 2: Se outro pegou, aparece aviso e o pedido sai da seleção
+        const ocupados = resultado.ocupados;
+        const plural = ocupados.length > 1;
+        const mensagem = plural
+          ? `Atenção: Os pedidos ${ocupados.join(", ")} já foram reservados por outro entregador e foram removidos da sua seleção!`
+          : `Atenção: O pedido ${ocupados[0]} já foi reservado por outro entregador e foi removido da sua seleção!`;
+
+        mostrarAviso(mensagem, "erro");
+
+        // Remove da seleção os pedidos que não estão mais disponíveis
+        ocupados.forEach((id) => selecionados.delete(id));
+
+        // Atualiza a lista removendo pedidos que não estão mais com status Pronto livre
+        atualizarListaPedidos();
+        return;
       }
 
-      atualizarInterface();
+      // Critério: Sucesso na reserva de todos os pedidos selecionados
+      mostrarAviso("Pedidos reservados com sucesso! Iniciando viagem...", "sucesso");
+      setTimeout(() => {
+        location.hash = "#/courier/trip";
+      }, 700);
     });
-  });
+  }
 
   // Botão Limpar seleção
   if (btnLimpar) {
@@ -360,14 +377,44 @@ function configurarSelecao() {
     });
   }
 
-  // Botão Iniciar viagem (prepara navegação futura)
-  if (btnIniciar) {
-    btnIniciar.addEventListener("click", () => {
-      if (selecionados.size === 0) return;
-      location.hash = "#/courier/trip";
+  // Botão de simulação de concorrência (para testes / apresentação do RF-ENT-03)
+  if (btnSimularConflito) {
+    btnSimularConflito.addEventListener("click", () => {
+      simularOutroEntregadorPegou("#1050", "ct_2");
+      mostrarAviso("Simulação: Outro entregador acabou de pegar o pedido #1050 no sistema!", "erro");
     });
   }
 
-  // Executa uma vez para sincronizar
+  // Botão de reset de pedidos para o estado inicial
+  if (btnResetar) {
+    btnResetar.addEventListener("click", () => {
+      salvarPedidos(PEDIDOS_INICIAIS);
+      selecionados.clear();
+      mostrarAviso("Pedidos resetados para o estado inicial!", "sucesso");
+      atualizarListaPedidos();
+    });
+  }
+
+  // Listener para sincronização automática entre abas ou eventos
+  window.addEventListener("peddi_pedidos_alterados", () => {
+    // Se algum pedido selecionado não estiver mais livre, remove da seleção
+    const pedidos = obterPedidos();
+    selecionados.forEach((id) => {
+      const pedido = pedidos.find((p) => p.id === id);
+      if (!pedido || pedido.status !== "Pronto" || (pedido.entregador_id && pedido.entregador_id !== courierId)) {
+        selecionados.delete(id);
+      }
+    });
+    atualizarListaPedidos();
+  });
+
+  window.addEventListener("storage", (e) => {
+    if (e.key === "peddi_pedidos") {
+      atualizarListaPedidos();
+    }
+  });
+
+  // Inicializa os eventos nos cards da lista inicial
+  vincularEventosCards();
   atualizarInterface();
 }
