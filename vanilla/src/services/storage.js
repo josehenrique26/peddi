@@ -74,10 +74,6 @@ export function iniciarDados() {
     gravar(KEYS.categories, cats);
 
     gravar(KEYS.products, [
-      { nome: "Marmita Grande", descricao: "Arroz, feijão, bife e salada", preco: 25, cat: 0 },
-      { nome: "Marmita Média", descricao: "Arroz, feijão e frango", preco: 20, cat: 0 },
-      { nome: "Refrigerante Lata", descricao: "350 ml", preco: 6, cat: 1 },
-      { nome: "Pudim", descricao: "Fatia individual", preco: 8, cat: 2 },
     ].map((p) => ({
       id: novoId(),
       nome: p.nome,
@@ -139,15 +135,32 @@ export function obterProduto(id) {
   return listarProdutos().find((p) => p.id === id) ?? null;
 }
 
+function validarImagemProduto(imagemUrl) {
+  const caminho = imagemUrl?.trim() ?? "";
+  if (!caminho) return "";
+  if (/^data:image\/(?:png|jpe?g|webp|gif);base64,[a-z0-9+/]+={0,2}$/i.test(caminho)) {
+    return caminho;
+  }
+
+  throw new Error("A imagem precisa ser selecionada do computador.");
+}
+
 export function criarProduto({ nome, descricao = "", preco, imagemUrl = "", categoriaId }) {
   if (!nome?.trim()) throw new Error("Informe o nome do produto.");
-  if (!(Number(preco) >= 0)) throw new Error("Preço inválido.");
+  const precoNumerico = Number(preco);
+  if (!Number.isFinite(precoNumerico) || precoNumerico <= 0) {
+    throw new Error("O preço deve ser maior que zero.");
+  }
+  if (!listarCategorias().some((categoria) => categoria.id === categoriaId)) {
+    throw new Error("Selecione uma categoria válida.");
+  }
+
   const produto = {
     id: novoId(),
     nome: nome.trim(),
     descricao,
-    preco: Number(preco),
-    imagemUrl,
+    preco: precoNumerico,
+    imagemUrl: validarImagemProduto(imagemUrl),
     categoriaId,
     disponivel: true,
   };
