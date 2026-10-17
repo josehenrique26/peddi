@@ -508,18 +508,18 @@ export function renderCourierTrip(root) {
         <span style="font-size: 0.85rem; color: #64748b; font-weight: 600;">Viagem em andamento</span>
       </div>
 
-      <!-- RF-ENT-04 & RF-ENT-05: Barra de progresso X de N entregues -->
+      <!-- RF-ENT-04, RF-ENT-05 & RF-ENT-06: Barra de progresso X de N entregues -->
       <section class="prog-card">
         <div class="track">
           <i class="track-bar" style="width: ${percentual}%;"></i>
         </div>
         <div class="prog-row">
-          <b>${entregues} de ${total} entregues</b>
+          <b>${entregues} de ${total} entregues (${percentual}%)</b>
           <small>${entregues === total ? "Viagem concluída 🎉" : `Parada atual: ${indiceParadaAtual + 1} de ${total}`}</small>
         </div>
       </section>
 
-      <!-- RF-ENT-04 & RF-ENT-05: Paradas numeradas com validação sequencial por código -->
+      <!-- RF-ENT-04, RF-ENT-05 & RF-ENT-06: Paradas numeradas com validação sequencial por código -->
       <div class="stops">
         ${pedidos
           .map((pedido, index) => {
@@ -530,6 +530,12 @@ export function renderCourierTrip(root) {
             const isEntregue = pedido.status === "Entregue";
             const isAtual = index === indiceParadaAtual;
             const isBloqueada = !isEntregue && index > indiceParadaAtual;
+            const horaEntrega = pedido.entregue_em
+              ? new Date(pedido.entregue_em).toLocaleTimeString("pt-BR", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              : "";
 
             const stopNumberClass = isEntregue
               ? "stop-number entregue"
@@ -585,7 +591,7 @@ export function renderCourierTrip(root) {
                 </a>
               </div>
 
-              <!-- RF-ENT-05: Validação do código de 4 dígitos -->
+              <!-- RF-ENT-05 & RF-ENT-06: Validação do código de 4 dígitos e finalização -->
               <div class="delivery-confirm-section">
                 ${
                   isEntregue
@@ -594,7 +600,7 @@ export function renderCourierTrip(root) {
                     <span class="confirmed-icon">✓</span>
                     <div class="confirmed-text">
                       <b>Entrega confirmada com sucesso!</b>
-                      <small>Status: Entregue · Código verificado</small>
+                      <small>Status: Entregue · Confirmado${horaEntrega ? ` às ${horaEntrega}` : ""}</small>
                     </div>
                   </div>
                   `
