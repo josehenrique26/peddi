@@ -232,6 +232,7 @@ export function iniciarViagem(idsPedidos, courierId = "ct_1") {
         entregador_id: courierId,
         codigo_entrega: codigo,
         tentativas_restantes: 3,
+        bloqueado: false,
         saiu_em: new Date().toISOString(),
       };
     }
@@ -451,23 +452,71 @@ export function sincronizarPedidoEntregueComDadosGlobais(pedidoAlvo, agoraIso = 
 }
 
 /**
- * RF-ENT-05 e RF-ENT-06: Validação por código de 4 dígitos e finalização do pedido
+ * RF-ENT-07: Registra o bloqueio da entrega no storage compartilhado (peddi.v1.data)
+ */
+export function sincronizarPedidoBloqueadoComDadosGlobais(pedidoAlvo) {
+  try {
+    const dados = obterDados();
+    if (!dados || !Array.isArray(dados.orders)) return;
+
+    const timestampMs = Date.now();
+    const pedidoId = pedidoAlvo.id;
+    const numLimpo = pedidoId.replace(/\D/g, "");
+
+    const pedidoGlobal = dados.orders.find(
+      (o) =>
+        o.id === pedidoId ||
+        o.id === `PED-${numLimpo}` ||
+        String(o.id) === String(numLimpo)
+    );
+
+    if (pedidoGlobal) {
+      if (!pedidoGlobal.history) pedidoGlobal.history = [];
+      pedidoGlobal.history.push({
+        state: pedidoGlobal.state || "em_entrega",
+        by: "Entregador",
+        at: timestampMs,
+        note: "Entrega bloqueada: 3 tentativas de código incorretas",
+      });
+      salvarDados();
+      window.dispatchEvent(new Event("storage"));
+    }
+  } catch (err) {
+    console.error("Erro ao sincronizar bloqueio com dados globais:", err);
+  }
+}
+
+/**
+ * RF-ENT-07: Reseta as tentativas de código para 3 e desbloqueia o pedido (para fins de teste/suporte)
+ */
+export function resetarTentativasPedido(pedidoId) {
+  const todosPedidos = obterPedidos();
+  const pedidosAtualizados = todosPedidos.map((p) => {
+    if (p.id === pedidoId) {
+      return {
+        ...p,
+        tentativas_restantes: 3,
+        bloqueado: false,
+      };
+    }
+    return p;
+  });
+
+  salvarPedidos(pedidosAtualizados);
+  return { sucesso: true, tentativas_restantes: 3, bloqueado: false };
+}
+
+/**
+ * RF-ENT-05, RF-ENT-06 e RF-ENT-07: Validação por código de 4 dígitos, controle de tentativas e finalização
  */
 export function validarEConfirmarEntrega(pedidoId, codigoDigitado) {
   const codigoLimpo = String(codigoDigitado || "").trim();
-
-  // Critérios 1 e 2: deve conter exatamente 4 dígitos numéricos
-  if (!/^\d{4}$/.test(codigoLimpo)) {
-    return {
-      sucesso: false,
-      erro: "O código deve ter exatamente 4 dígitos numéricos.",
-    };
-  }
 
   const viagem = obterViagemAtual();
   if (!viagem) {
     return {
       sucesso: false,
+      bloqueado: false,
       erro: "Nenhuma viagem em andamento encontrada.",
     };
   }
@@ -478,6 +527,7 @@ export function validarEConfirmarEntrega(pedidoId, codigoDigitado) {
   if (indiceAlvo === -1) {
     return {
       sucesso: false,
+      bloqueado: false,
       erro: "Pedido não encontrado nesta viagem.",
     };
   }
@@ -491,6 +541,7 @@ export function validarEConfirmarEntrega(pedidoId, codigoDigitado) {
     const numeroParadaPendente = pedidos.indexOf(paradaPendenteAnterior) + 1;
     return {
       sucesso: false,
+      bloqueado: false,
       erro: `Você deve concluir a Parada ${numeroParadaPendente} antes de confirmar esta entrega.`,
     };
   }
@@ -499,15 +550,70 @@ export function validarEConfirmarEntrega(pedidoId, codigoDigitado) {
   if (pedidoAlvo.status === "Entregue") {
     return {
       sucesso: false,
+      bloqueado: false,
       erro: "Esta entrega já foi confirmada anteriormente.",
     };
   }
 
-  // Validação do código conferido com o código gerado no início da viagem
-  if (pedidoAlvo.codigo_entrega && pedidoAlvo.codigo_entrega !== codigoLimpo) {
+  const tentativasAtuais =
+    typeof pedidoAlvo.tentativas_restantes === "number"
+      ? pedidoAlvo.tentativas_restantes
+      : 3;
+
+  // RF-ENT-07 (Critério 3): Bloqueio se tentativas esgotadas
+  if (pedidoAlvo.bloqueado || tentativasAtuais <= 0) {
     return {
       sucesso: false,
-      erro: "Código incorreto. Peça ao cliente para verificar o código de 4 dígitos.",
+      bloqueado: true,
+      tentativasRestantes: 0,
+      erro: "Limite de 3 tentativas esgotado. Entrega bloqueada! Entre em contato com o estabelecimento.",
+    };
+  }
+
+  // Critérios 1 e 2: deve conter exatamente 4 dígitos numéricos
+  if (!/^\d{4}$/.test(codigoLimpo)) {
+    return {
+      sucesso: false,
+      bloqueado: false,
+      tentativasRestantes: tentativasAtuais,
+      erro: "O código deve ter exatamente 4 dígitos numéricos.",
+    };
+  }
+
+  // RF-ENT-07 (Critérios 1, 2 e 3): Código incorreto mostra erro, decrementa tentativa e bloqueia se chegar a 0
+  if (pedidoAlvo.codigo_entrega && pedidoAlvo.codigo_entrega !== codigoLimpo) {
+    const novasTentativas = Math.max(0, tentativasAtuais - 1);
+    const estaBloqueado = novasTentativas === 0;
+
+    const todosPedidos = obterPedidos();
+    const pedidosAtualizados = todosPedidos.map((p) => {
+      if (p.id === pedidoId) {
+        return {
+          ...p,
+          tentativas_restantes: novasTentativas,
+          bloqueado: estaBloqueado,
+        };
+      }
+      return p;
+    });
+
+    salvarPedidos(pedidosAtualizados);
+
+    if (estaBloqueado) {
+      sincronizarPedidoBloqueadoComDadosGlobais(pedidoAlvo);
+      return {
+        sucesso: false,
+        bloqueado: true,
+        tentativasRestantes: 0,
+        erro: "Limite de 3 tentativas esgotado! Esta entrega foi bloqueada por segurança. Entre em contato com o estabelecimento.",
+      };
+    }
+
+    return {
+      sucesso: false,
+      bloqueado: false,
+      tentativasRestantes: novasTentativas,
+      erro: `Código incorreto! Resta${novasTentativas === 1 ? " apenas" : "m"} ${novasTentativas} tentativa${novasTentativas > 1 ? "s" : ""}. Peça ao cliente para verificar o código.`,
     };
   }
 
@@ -538,6 +644,8 @@ export function validarEConfirmarEntrega(pedidoId, codigoDigitado) {
 
   return {
     sucesso: true,
+    bloqueado: false,
+    tentativasRestantes: tentativasAtuais,
     mensagem: `Entrega do Pedido ${pedidoId} confirmada com sucesso!`,
     todosEntregues: Boolean(todosEntregues),
     pedido: pedidosAtualizados.find((p) => p.id === pedidoId),

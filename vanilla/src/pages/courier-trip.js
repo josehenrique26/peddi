@@ -1,4 +1,11 @@
-import { obterViagemAtual, obterPedidos, salvarPedidos, finalizarViagem, validarEConfirmarEntrega } from "../services/orders.js";
+import {
+  obterViagemAtual,
+  obterPedidos,
+  salvarPedidos,
+  finalizarViagem,
+  validarEConfirmarEntrega,
+  resetarTentativasPedido,
+} from "../services/orders.js";
 import { lerSessao, gravarSessao } from "../services/storage.js";
 import { rotas, rotaDoPerfil, navegar } from "../utils/routes.js";
 import { listarEntregadores, obterEmpresa } from "../services/companies.js";
@@ -78,6 +85,10 @@ function injetarEstilosTrip() {
       background: #16a34a;
       box-shadow: 0 2px 6px rgba(22, 163, 74, 0.3);
     }
+    .stop-number.blocked-stop {
+      background: #dc2626;
+      box-shadow: 0 2px 6px rgba(220, 38, 38, 0.35);
+    }
 
     .stop-card {
       background: #fff;
@@ -90,6 +101,7 @@ function injetarEstilosTrip() {
     .order-tag { font-weight: 700; font-size: 1.05rem; color: var(--text-main); }
     .status-badge-trip { background: var(--orange-bg); color: var(--orange-text); padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; }
     .status-badge-trip.entregue { background: var(--green-bg); color: var(--green-text); }
+    .status-badge-trip.blocked { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
     
     .stop-addr { font-size: 1.15rem; font-weight: 700; color: #1e293b; margin-bottom: 4px; }
     .stop-subaddr { color: #64748b; font-size: 0.9rem; margin-bottom: 14px; }
@@ -207,6 +219,28 @@ function injetarEstilosTrip() {
     }
     .code-box-header b { font-size: 0.95rem; color: #1e293b; display: flex; align-items: center; gap: 6px; }
     .code-box-header small { color: #64748b; font-size: 0.82rem; }
+    .badge-attempts {
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: #f1f5f9;
+      color: #475569;
+      border: 1px solid #cbd5e1;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .badge-attempts.critical {
+      background: #fee2e2;
+      color: #b91c1c;
+      border-color: #fca5a5;
+      animation: pulse-badge 1.5s infinite;
+    }
+    @keyframes pulse-badge {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.85; transform: scale(1.03); }
+    }
 
     .code-input-row {
       display: flex;
@@ -333,6 +367,113 @@ function injetarEstilosTrip() {
     }
     .test-code-hint b { letter-spacing: 0.1em; font-size: 0.95rem; }
 
+    /* RF-ENT-07: Estilos de bloqueio por esgotamento de tentativas */
+    .code-box.blocked {
+      background: #fef2f2;
+      border: 1.5px solid #f87171;
+      border-radius: 10px;
+      padding: 16px;
+      box-shadow: 0 2px 8px rgba(220, 38, 38, 0.08);
+    }
+    .blocked-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+    .blocked-icon {
+      font-size: 2rem;
+      line-height: 1;
+    }
+    .blocked-title {
+      font-size: 1.05rem;
+      color: #991b1b;
+      display: block;
+    }
+    .blocked-badge {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 700;
+      background: #fee2e2;
+      color: #b91c1c;
+      border: 1px solid #fca5a5;
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-top: 2px;
+    }
+    .blocked-text {
+      color: #7f1d1d;
+      font-size: 0.88rem;
+      line-height: 1.45;
+      margin-bottom: 12px;
+    }
+    .blocked-contact-box {
+      background: #fff;
+      border: 1px solid #fecaca;
+      border-radius: 8px;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+    .contact-header b {
+      color: #1e293b;
+      font-size: 0.92rem;
+      display: block;
+    }
+    .contact-header span {
+      color: #64748b;
+      font-size: 0.82rem;
+      display: block;
+      margin-top: 2px;
+      margin-bottom: 10px;
+    }
+    .contact-details {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+      font-size: 0.88rem;
+      color: #334155;
+    }
+    .btn-call-establishment {
+      background: #b91c1c;
+      color: #fff;
+      border: none;
+      padding: 9px 16px;
+      border-radius: 6px;
+      font-size: 0.88rem;
+      font-weight: 700;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: background 0.15s ease;
+    }
+    .btn-call-establishment:hover {
+      background: #991b1b;
+      color: #fff;
+    }
+    .blocked-test-actions {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 8px;
+    }
+    .btn-reset-attempts {
+      background: transparent;
+      border: 1px dashed #94a3b8;
+      color: #475569;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .btn-reset-attempts:hover {
+      background: #f1f5f9;
+      color: #0f172a;
+      border-color: #64748b;
+    }
+
     .toast-msg {
       position: fixed;
       bottom: 24px;
@@ -430,6 +571,10 @@ export function renderCourierTrip(root) {
   const entregadores = listarEntregadores();
   const courierId = sessao.courierId || (entregadores.find((c) => c.active) ?? entregadores[0]).id;
   const entregadorAtual = entregadores.find((c) => c.id === courierId) || entregadores[0];
+  const empresaAtual = obterEmpresa(entregadorAtual?.companyId) || {
+    name: "Forno da Vila",
+    phone: "(83) 3221-4040",
+  };
 
   const opcoesEntregadores = entregadores
     .map((c) => {
@@ -528,8 +673,12 @@ export function renderCourierTrip(root) {
               `${pedido.endereco_completo}, ${pedido.bairro}, João Pessoa`
             );
             const isEntregue = pedido.status === "Entregue";
+            const tentativasRestantes =
+              typeof pedido.tentativas_restantes === "number"
+                ? pedido.tentativas_restantes
+                : 3;
+            const isBloqueado = Boolean(pedido.bloqueado) || tentativasRestantes <= 0;
             const isAtual = index === indiceParadaAtual;
-            const isBloqueada = !isEntregue && index > indiceParadaAtual;
             const horaEntrega = pedido.entregue_em
               ? new Date(pedido.entregue_em).toLocaleTimeString("pt-BR", {
                   hour: "2-digit",
@@ -539,20 +688,34 @@ export function renderCourierTrip(root) {
 
             const stopNumberClass = isEntregue
               ? "stop-number entregue"
+              : isBloqueado && isAtual
+              ? "stop-number blocked-stop"
               : isAtual
               ? "stop-number active-stop"
               : "stop-number locked";
 
+            const statusBadgeClass = isEntregue
+              ? "status-badge-trip entregue"
+              : isBloqueado && isAtual
+              ? "status-badge-trip blocked"
+              : "";
+
+            const statusTexto = isEntregue
+              ? "Entregue"
+              : isBloqueado && isAtual
+              ? "Bloqueado"
+              : pedido.status || "Saiu para entrega";
+
             return `
           <article class="stop" data-pedido-id="${pedido.id}">
             <span class="${stopNumberClass}">
-              ${isEntregue ? "✓" : numeroParada}
+              ${isEntregue ? "✓" : isBloqueado && isAtual ? "🚫" : numeroParada}
             </span>
             <div class="stop-card">
               <div class="stop-header">
                 <b class="order-tag">${pedido.id}</b>
-                <span class="status-badge-trip ${isEntregue ? "entregue" : ""}">
-                  ${pedido.status || "Saiu para entrega"}
+                <span class="status-badge-trip ${statusBadgeClass}">
+                  ${statusTexto}
                 </span>
                 <small style="color: #64748b;">Parada ${numeroParada} de ${total}</small>
               </div>
@@ -591,7 +754,7 @@ export function renderCourierTrip(root) {
                 </a>
               </div>
 
-              <!-- RF-ENT-05 & RF-ENT-06: Validação do código de 4 dígitos e finalização -->
+              <!-- RF-ENT-05, RF-ENT-06 & RF-ENT-07: Validação por código, tentativas e finalização -->
               <div class="delivery-confirm-section">
                 ${
                   isEntregue
@@ -604,12 +767,50 @@ export function renderCourierTrip(root) {
                     </div>
                   </div>
                   `
+                    : isBloqueado && isAtual
+                    ? `
+                  <div class="code-box blocked">
+                    <div class="blocked-header">
+                      <span class="blocked-icon">🚫</span>
+                      <div>
+                        <b class="blocked-title">Entrega Bloqueada</b>
+                        <span class="blocked-badge">Limite de 3 tentativas esgotado</span>
+                      </div>
+                    </div>
+                    <p class="blocked-text">
+                      O código de confirmação foi inserido incorretamente 3 vezes seguidas. Por motivos de segurança, esta parada foi bloqueada e não pode ser concluída pelo aplicativo.
+                    </p>
+                    <div class="blocked-contact-box">
+                      <div class="contact-header">
+                        <b>📞 Orientação ao entregador:</b>
+                        <span>Entre em contato imediatamente com o estabelecimento parceiro para conferência ou liberação:</span>
+                      </div>
+                      <div class="contact-details">
+                        <span class="company-name">🏪 Estabelecimento: <b>${empresaAtual?.name || "Estabelecimento"}</b></span>
+                        <span class="company-phone">Telefone: <b>${empresaAtual?.phone || "(83) 3221-4040"}</b></span>
+                      </div>
+                      <a href="tel:${(empresaAtual?.phone || '').replace(/[^\d+]/g, '')}" class="btn-call-establishment">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                        </svg>
+                        Ligar para ${empresaAtual?.name || "Estabelecimento"}
+                      </a>
+                    </div>
+                    <div class="blocked-test-actions">
+                      <button type="button" class="btn-reset-attempts" data-reset-pedido-id="${pedido.id}">
+                        🔄 Resetar tentativas (demonstração / teste)
+                      </button>
+                    </div>
+                  </div>
+                  `
                     : isAtual
                     ? `
                   <div class="code-box active">
                     <div class="code-box-header">
                       <b>🔑 Validação de entrega</b>
-                      <small>Peça o código ao cliente</small>
+                      <span class="badge-attempts ${tentativasRestantes === 1 ? 'critical' : ''}" data-badge-pedido-id="${pedido.id}">
+                        ${tentativasRestantes === 1 ? '⚠️ Última tentativa!' : `🎯 ${tentativasRestantes} de 3 tentativas restantes`}
+                      </span>
                     </div>
                     <div class="code-input-row">
                       <input
@@ -726,6 +927,12 @@ export function renderCourierTrip(root) {
       const resultado = validarEConfirmarEntrega(pedidoId, codigoDigitado);
 
       if (!resultado.sucesso) {
+        if (resultado.bloqueado) {
+          exibirToast(resultado.erro, "erro");
+          renderCourierTrip(root);
+          return;
+        }
+
         if (input) {
           input.classList.add("has-error");
           input.focus();
@@ -734,6 +941,16 @@ export function renderCourierTrip(root) {
         if (errorEl) {
           errorEl.textContent = `⚠️ ${resultado.erro}`;
           errorEl.style.display = "flex";
+        }
+        const badgeEl = root.querySelector(`.badge-attempts[data-badge-pedido-id="${pedidoId}"]`);
+        if (badgeEl && typeof resultado.tentativasRestantes === "number") {
+          const rest = resultado.tentativasRestantes;
+          badgeEl.textContent = rest === 1 ? "⚠️ Última tentativa!" : `🎯 ${rest} de 3 tentativas restantes`;
+          if (rest === 1) {
+            badgeEl.classList.add("critical");
+          } else {
+            badgeEl.classList.remove("critical");
+          }
         }
         exibirToast(resultado.erro, "erro");
         return;
@@ -744,6 +961,16 @@ export function renderCourierTrip(root) {
       setTimeout(() => {
         renderCourierTrip(root);
       }, 500);
+    });
+  });
+
+  // RF-ENT-07: Resetar tentativas para fins de teste/demonstração
+  root.querySelectorAll(".btn-reset-attempts[data-reset-pedido-id]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const pedidoId = btn.dataset.resetPedidoId;
+      resetarTentativasPedido(pedidoId);
+      exibirToast("Tentativas resetadas para 3. Você pode tentar novamente.", "sucesso");
+      renderCourierTrip(root);
     });
   });
 
