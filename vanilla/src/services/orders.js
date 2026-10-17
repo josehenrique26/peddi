@@ -314,3 +314,93 @@ export function simularOutroEntregadorPegou(
   });
   salvarPedidos(pedidosAtualizados);
 }
+
+/**
+ * RF-ENT-05: Validação por código de 4 dígitos e confirmação na ordem das paradas
+ */
+export function validarEConfirmarEntrega(pedidoId, codigoDigitado) {
+  const codigoLimpo = String(codigoDigitado || "").trim();
+
+  // Critérios 1 e 2: deve conter exatamente 4 dígitos numéricos
+  if (!/^\d{4}$/.test(codigoLimpo)) {
+    return {
+      sucesso: false,
+      erro: "O código deve ter exatamente 4 dígitos numéricos.",
+    };
+  }
+
+  const viagem = obterViagemAtual();
+  if (!viagem) {
+    return {
+      sucesso: false,
+      erro: "Nenhuma viagem em andamento encontrada.",
+    };
+  }
+
+  const pedidos = viagem.pedidosDetalhados;
+  const indiceAlvo = pedidos.findIndex((p) => p.id === pedidoId);
+
+  if (indiceAlvo === -1) {
+    return {
+      sucesso: false,
+      erro: "Pedido não encontrado nesta viagem.",
+    };
+  }
+
+  // Critério 3: Confirmação na ordem das paradas
+  const paradaPendenteAnterior = pedidos
+    .slice(0, indiceAlvo)
+    .find((p) => p.status !== "Entregue");
+
+  if (paradaPendenteAnterior) {
+    const numeroParadaPendente = pedidos.indexOf(paradaPendenteAnterior) + 1;
+    return {
+      sucesso: false,
+      erro: `Você deve concluir a Parada ${numeroParadaPendente} antes de confirmar esta entrega.`,
+    };
+  }
+
+  const pedidoAlvo = pedidos[indiceAlvo];
+  if (pedidoAlvo.status === "Entregue") {
+    return {
+      sucesso: false,
+      erro: "Esta entrega já foi confirmada anteriormente.",
+    };
+  }
+
+  // Validação do código conferido com o código gerado no início da viagem
+  if (pedidoAlvo.codigo_entrega && pedidoAlvo.codigo_entrega !== codigoLimpo) {
+    return {
+      sucesso: false,
+      erro: "Código incorreto. Peça ao cliente para verificar o código de 4 dígitos.",
+    };
+  }
+
+  // Sucesso: atualiza status para Entregue
+  const todosPedidos = obterPedidos();
+  const pedidosAtualizados = todosPedidos.map((p) => {
+    if (p.id === pedidoId) {
+      return {
+        ...p,
+        status: "Entregue",
+        entregue_em: new Date().toISOString(),
+      };
+    }
+    return p;
+  });
+
+  salvarPedidos(pedidosAtualizados);
+
+  // Confere se todas as paradas da viagem foram finalizadas
+  const viagemAtualizada = obterViagemAtual();
+  const todosEntregues = viagemAtualizada?.pedidosDetalhados.every(
+    (p) => p.status === "Entregue"
+  );
+
+  return {
+    sucesso: true,
+    mensagem: `Entrega do Pedido ${pedidoId} confirmada com sucesso!`,
+    todosEntregues: Boolean(todosEntregues),
+    pedido: pedidosAtualizados.find((p) => p.id === pedidoId),
+  };
+}

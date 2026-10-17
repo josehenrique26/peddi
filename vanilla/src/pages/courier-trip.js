@@ -1,5 +1,7 @@
-// src/pages/courier-trip.js — Viagem atual do entregador (RF-ENT-04)
-import { obterViagemAtual, obterPedidos, salvarPedidos, finalizarViagem } from "../services/orders.js";
+import { obterViagemAtual, obterPedidos, salvarPedidos, finalizarViagem, validarEConfirmarEntrega } from "../services/orders.js";
+import { lerSessao, gravarSessao } from "../services/storage.js";
+import { rotas, rotaDoPerfil, navegar } from "../utils/routes.js";
+import { listarEntregadores, obterEmpresa } from "../services/companies.js";
 
 const ESTILOS_TRIP_ID = "peddi-courier-trip-styles";
 
@@ -31,6 +33,9 @@ function injetarEstilosTrip() {
     .btn-nav { background: transparent; color: #aaa; border: 1px solid #444; padding: 6px 12px; border-radius: 6px; cursor: pointer; text-decoration: none; font-size: 0.85rem; }
     .btn-nav:hover { color: #fff; border-color: #666; }
     .btn-nav.active { background: var(--primary-color); color: #fff; border-color: var(--primary-color); }
+    .select-courier-topbar { background: #262930; color: #f2f1ee; border: 1px solid #383c45; padding: 6px 12px; border-radius: 6px; font-size: 0.85rem; cursor: pointer; outline: none; font-family: inherit; max-width: 280px; }
+    .select-courier-topbar:hover, .select-courier-topbar:focus { border-color: #666; }
+    .select-courier-topbar option { background: #1e1e24; color: #fff; }
     
     .container { max-width: 640px; margin: 20px auto; padding: 0 16px 80px 16px; }
     
@@ -166,6 +171,205 @@ function injetarEstilosTrip() {
     .btn-cancel-trip { background: transparent; border: 1px solid #cbd5e1; color: #64748b; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 600; }
     .btn-cancel-trip:hover { background: #fee2e2; color: #b91c1c; border-color: #fca5a5; }
 
+    /* RF-ENT-05: Estilos de Validação do Código de 4 dígitos */
+    .stop-number.locked { background: #94a3b8; box-shadow: none; }
+    .stop-number.active-stop { background: var(--primary-color); animation: pulse-ring 2s infinite; }
+    @keyframes pulse-ring {
+      0% { box-shadow: 0 0 0 0 rgba(255, 90, 34, 0.4); }
+      70% { box-shadow: 0 0 0 8px rgba(255, 90, 34, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(255, 90, 34, 0); }
+    }
+
+    .delivery-confirm-section {
+      margin-top: 16px;
+      padding-top: 14px;
+      border-top: 1px solid #f1f5f9;
+    }
+    
+    .code-box {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 14px 16px;
+    }
+    .code-box.active {
+      background: #fff;
+      border: 1.5px solid #fed7aa;
+      box-shadow: 0 2px 8px rgba(255, 90, 34, 0.06);
+    }
+    .code-box-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .code-box-header b { font-size: 0.95rem; color: #1e293b; display: flex; align-items: center; gap: 6px; }
+    .code-box-header small { color: #64748b; font-size: 0.82rem; }
+
+    .code-input-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .input-delivery-code {
+      width: 140px;
+      height: 44px;
+      text-align: center;
+      font-size: 1.4rem;
+      font-weight: 800;
+      letter-spacing: 0.25em;
+      color: #1e293b;
+      background: #fff;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 8px;
+      outline: none;
+      transition: all 0.15s ease;
+      font-family: inherit;
+    }
+    .input-delivery-code:focus {
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgba(255, 90, 34, 0.15);
+    }
+    .input-delivery-code.has-error {
+      border-color: #dc2626;
+      background: #fef2f2;
+      animation: shake 0.3s ease;
+      box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15);
+    }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-4px); }
+      75% { transform: translateX(4px); }
+    }
+
+    .btn-confirm-delivery {
+      background: var(--primary-color);
+      color: #fff;
+      border: none;
+      height: 44px;
+      padding: 0 18px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 0.9rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+    .btn-confirm-delivery:hover { opacity: 0.92; }
+    .btn-confirm-delivery:active { transform: scale(0.98); }
+
+    .code-error-msg {
+      margin-top: 8px;
+      color: #b91c1c;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      animation: fadeIn 0.2s ease;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .delivery-confirmed-box {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 10px;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: #166534;
+    }
+    .confirmed-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #16a34a;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 1.1rem;
+    }
+    .confirmed-text b { display: block; font-size: 0.95rem; color: #14532d; }
+    .confirmed-text small { color: #166534; font-size: 0.82rem; }
+
+    .locked-box {
+      background: #f8fafc;
+      border: 1px dashed #cbd5e1;
+      border-radius: 10px;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: #64748b;
+      font-size: 0.88rem;
+    }
+
+    .test-code-hint {
+      margin-top: 10px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8rem;
+      color: #92400e;
+      background: #fef3c7;
+      border: 1px dashed #f59e0b;
+      padding: 4px 10px;
+      border-radius: 6px;
+    }
+    .test-code-hint b { letter-spacing: 0.1em; font-size: 0.95rem; }
+
+    .toast-msg {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      z-index: 1000;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.15);
+      animation: toastIn 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .toast-msg.sucesso { background: #166534; color: #fff; }
+    .toast-msg.erro { background: #b91c1c; color: #fff; }
+    @keyframes toastIn {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .trip-finished-card {
+      background: #ecfdf5;
+      border: 1.5px solid #6ee7b7;
+      border-radius: 12px;
+      padding: 24px 20px;
+      margin-top: 24px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+    .trip-finished-card h3 { color: #065f46; font-size: 1.3rem; margin: 0; }
+    .trip-finished-card p { color: #047857; font-size: 0.95rem; margin: 0; }
+
     @media (max-width: 600px) {
       .stop-actions { grid-template-columns: 1fr; }
     }
@@ -180,8 +384,60 @@ function obterIniciais(nome) {
   return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase();
 }
 
+function vincularTrocaPerfil(root) {
+  root.querySelectorAll("[data-perfil]").forEach((el) => {
+    el.addEventListener("click", (e) => {
+      e.preventDefault();
+      const perfil = el.dataset.perfil;
+      gravarSessao({ ...lerSessao(), role: perfil });
+      navegar(rotaDoPerfil[perfil]());
+    });
+  });
+
+  const seletorEntregador = root.querySelector("#select-entregador-topbar");
+  if (seletorEntregador) {
+    seletorEntregador.addEventListener("change", (e) => {
+      gravarSessao({ ...lerSessao(), courierId: e.target.value });
+      location.reload();
+    });
+  }
+
+  window.addEventListener("storage", (e) => {
+    if (e.key === "peddi.v1.session") {
+      location.reload();
+    }
+  });
+}
+
+function exibirToast(mensagem, tipo = "sucesso") {
+  const antigo = document.querySelector(".toast-msg");
+  if (antigo) antigo.remove();
+
+  const toast = document.createElement("div");
+  toast.className = `toast-msg ${tipo}`;
+  toast.innerHTML = `<span>${tipo === "sucesso" ? "✅" : "⚠️"}</span> <span>${mensagem}</span>`;
+  document.body.appendChild(toast);
+
+  setTimeout(() => {
+    toast.remove();
+  }, 4000);
+}
+
 export function renderCourierTrip(root) {
   injetarEstilosTrip();
+
+  const sessao = lerSessao();
+  const entregadores = listarEntregadores();
+  const courierId = sessao.courierId || (entregadores.find((c) => c.active) ?? entregadores[0]).id;
+  const entregadorAtual = entregadores.find((c) => c.id === courierId) || entregadores[0];
+
+  const opcoesEntregadores = entregadores
+    .map((c) => {
+      const emp = obterEmpresa(c.companyId);
+      const label = `${c.name} · ${emp?.name ?? ""}${c.active ? "" : " (inativo)"}`;
+      return `<option value="${c.id}" ${c.id === entregadorAtual.id ? "selected" : ""}>${label}</option>`;
+    })
+    .join("");
 
   const viagem = obterViagemAtual();
 
@@ -190,13 +446,19 @@ export function renderCourierTrip(root) {
     root.innerHTML = `
       <header class="topbar">
         <div class="topbar-left">
-          <a href="#/courier/available" class="logo-icon-small">P</a>
-          <span><b>Peddi</b> Viagem Atual</span>
+          <a href="${rotas.inicio()}" class="logo-icon-small" title="Página Inicial">P</a>
+          <span><b>Peddi</b> Modo demonstração: troca de perfil</span>
         </div>
         <nav class="topbar-nav">
-          <a href="#/courier/available" class="btn-nav">Pedidos Prontos</a>
-          <a href="#/courier/trip" class="btn-nav active">Viagem</a>
+          <a href="${rotas.admin()}" class="btn-nav" data-perfil="admin">Estabelecimento</a>
+          <a href="${rotas.pedidos()}" class="btn-nav" data-perfil="cliente">Cliente</a>
+          <a href="${rotas.entregador()}" class="btn-nav active" data-perfil="entregador">Entregador</a>
         </nav>
+        <div class="topbar-right">
+          <select id="select-entregador-topbar" class="select-courier-topbar" aria-label="Entregador em demonstração">
+            ${opcoesEntregadores}
+          </select>
+        </div>
       </header>
 
       <main class="container">
@@ -210,42 +472,54 @@ export function renderCourierTrip(root) {
         </div>
       </main>
     `;
+    vincularTrocaPerfil(root);
     return;
   }
 
   const pedidos = viagem.pedidosDetalhados;
   const entregues = pedidos.filter((p) => p.status === "Entregue").length;
   const total = pedidos.length;
-  const percentual = Math.round((entregues / total) * 100);
+  const percentual = total > 0 ? Math.round((entregues / total) * 100) : 0;
+  const indiceParadaAtual = pedidos.findIndex((p) => p.status !== "Entregue");
 
   root.innerHTML = `
     <header class="topbar">
       <div class="topbar-left">
-        <a href="#/courier/available" class="logo-icon-small">P</a>
-        <span><b>Peddi</b> Viagem em andamento</span>
+        <a href="${rotas.inicio()}" class="logo-icon-small" title="Página Inicial">P</a>
+        <span><b>Peddi</b> Modo demonstração: troca de perfil</span>
       </div>
       <nav class="topbar-nav">
-        <a href="#/courier/available" class="btn-nav">Disponíveis</a>
-        <a href="#/courier/trip" class="btn-nav active">Viagem atual</a>
+        <a href="${rotas.admin()}" class="btn-nav" data-perfil="admin">Estabelecimento</a>
+        <a href="${rotas.pedidos()}" class="btn-nav" data-perfil="cliente">Cliente</a>
+        <a href="${rotas.entregador()}" class="btn-nav active" data-perfil="entregador">Entregador</a>
       </nav>
       <div class="topbar-right">
-        <span class="btn-nav" style="border:none; cursor:default;">Rafael Mota · Forno da Vila</span>
+        <select id="select-entregador-topbar" class="select-courier-topbar" aria-label="Entregador em demonstração">
+          ${opcoesEntregadores}
+        </select>
       </div>
     </header>
 
     <main class="container">
-      <!-- RF-ENT-04: Critério 4 - Barra de progresso X de N entregues -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 8px;">
+        <a href="#/courier/available" class="btn-nav" style="display: inline-flex; align-items: center; gap: 6px; background: #fff; color: #334155; border: 1px solid #cbd5e1; font-weight: 600;">
+          ← Ver pedidos disponíveis
+        </a>
+        <span style="font-size: 0.85rem; color: #64748b; font-weight: 600;">Viagem em andamento</span>
+      </div>
+
+      <!-- RF-ENT-04 & RF-ENT-05: Barra de progresso X de N entregues -->
       <section class="prog-card">
         <div class="track">
           <i class="track-bar" style="width: ${percentual}%;"></i>
         </div>
         <div class="prog-row">
           <b>${entregues} de ${total} entregues</b>
-          <small>${entregues === total ? "Viagem concluída 🎉" : `Parada atual: 1 de ${total}`}</small>
+          <small>${entregues === total ? "Viagem concluída 🎉" : `Parada atual: ${indiceParadaAtual + 1} de ${total}`}</small>
         </div>
       </section>
 
-      <!-- RF-ENT-04: Critério 4 - Paradas numeradas -->
+      <!-- RF-ENT-04 & RF-ENT-05: Paradas numeradas com validação sequencial por código -->
       <div class="stops">
         ${pedidos
           .map((pedido, index) => {
@@ -254,10 +528,20 @@ export function renderCourierTrip(root) {
               `${pedido.endereco_completo}, ${pedido.bairro}, João Pessoa`
             );
             const isEntregue = pedido.status === "Entregue";
+            const isAtual = index === indiceParadaAtual;
+            const isBloqueada = !isEntregue && index > indiceParadaAtual;
+
+            const stopNumberClass = isEntregue
+              ? "stop-number entregue"
+              : isAtual
+              ? "stop-number active-stop"
+              : "stop-number locked";
 
             return `
-          <article class="stop">
-            <span class="stop-number ${isEntregue ? "entregue" : ""}">${isEntregue ? "✓" : numeroParada}</span>
+          <article class="stop" data-pedido-id="${pedido.id}">
+            <span class="${stopNumberClass}">
+              ${isEntregue ? "✓" : numeroParada}
+            </span>
             <div class="stop-card">
               <div class="stop-header">
                 <b class="order-tag">${pedido.id}</b>
@@ -267,13 +551,13 @@ export function renderCourierTrip(root) {
                 <small style="color: #64748b;">Parada ${numeroParada} de ${total}</small>
               </div>
 
-              <!-- RF-ENT-04: Critério 3 - Endereço completo e complemento liberados -->
+              <!-- RF-ENT-04: Endereço completo e complemento -->
               <h3 class="stop-addr">${pedido.endereco_completo}</h3>
               <p class="stop-subaddr">
                 📍 <b>${pedido.bairro}</b>${pedido.complemento ? ` · ${pedido.complemento}` : ""}
               </p>
 
-              <!-- RF-ENT-04: Critério 3 - Nome do cliente e telefone liberados -->
+              <!-- RF-ENT-04: Dados do cliente -->
               <div class="client-box">
                 <span class="client-avatar">${obterIniciais(pedido.cliente)}</span>
                 <div class="client-info">
@@ -284,8 +568,8 @@ export function renderCourierTrip(root) {
                 </div>
               </div>
 
-              <!-- RF-ENT-04: Critério 4 - Link para abrir no mapa -->
-              <div class="stop-actions">
+              <!-- Abrir no Google Maps -->
+              <div style="margin-bottom: 14px;">
                 <a
                   class="btn-map"
                   href="https://www.google.com/maps/search/?api=1&query=${enderecoEncoded}"
@@ -299,12 +583,66 @@ export function renderCourierTrip(root) {
                   </svg>
                   Abrir no Google Maps
                 </a>
+              </div>
 
-                <!-- RF-ENT-04: Critério 2 - Código de 4 dígitos gerado por pedido (exibido para visualização/teste do fluxo) -->
-                <div class="client-code-badge" title="Este código foi gerado pelo sistema e aparece na tela do cliente para confirmação">
-                  <small>Código do cliente (RF-ENT-04):</small>
-                  <span>${pedido.codigo_entrega || "----"}</span>
-                </div>
+              <!-- RF-ENT-05: Validação do código de 4 dígitos -->
+              <div class="delivery-confirm-section">
+                ${
+                  isEntregue
+                    ? `
+                  <div class="delivery-confirmed-box">
+                    <span class="confirmed-icon">✓</span>
+                    <div class="confirmed-text">
+                      <b>Entrega confirmada com sucesso!</b>
+                      <small>Status: Entregue · Código verificado</small>
+                    </div>
+                  </div>
+                  `
+                    : isAtual
+                    ? `
+                  <div class="code-box active">
+                    <div class="code-box-header">
+                      <b>🔑 Validação de entrega</b>
+                      <small>Peça o código ao cliente</small>
+                    </div>
+                    <div class="code-input-row">
+                      <input
+                        type="text"
+                        class="input-delivery-code"
+                        data-pedido-id="${pedido.id}"
+                        inputmode="numeric"
+                        maxlength="4"
+                        placeholder="0000"
+                        autocomplete="off"
+                        aria-label="Código de entrega de 4 dígitos para o pedido ${pedido.id}"
+                      />
+                      <button
+                        type="button"
+                        class="btn-confirm-delivery"
+                        data-pedido-id="${pedido.id}"
+                      >
+                        Confirmar Entrega
+                      </button>
+                    </div>
+                    <div class="code-error-msg" data-error-pedido-id="${pedido.id}" style="display: none;"></div>
+                    <div class="test-code-hint">
+                      <span>💡 Código do cliente para teste:</span>
+                      <b>${pedido.codigo_entrega || "----"}</b>
+                    </div>
+                  </div>
+                  `
+                    : `
+                  <div class="locked-box">
+                    <span style="font-size: 1.3rem;">🔒</span>
+                    <div>
+                      <b>Aguardando conclusão da Parada ${indiceParadaAtual + 1}</b>
+                      <div style="font-size: 0.8rem; color: #64748b; margin-top: 2px;">
+                        Você deve concluir a Parada ${indiceParadaAtual + 1} (${pedidos[indiceParadaAtual]?.cliente || "anterior"}) antes desta entrega.
+                      </div>
+                    </div>
+                  </div>
+                  `
+                }
               </div>
             </div>
           </article>
@@ -313,24 +651,119 @@ export function renderCourierTrip(root) {
           .join("")}
       </div>
 
-      <div class="trip-footer">
-        <a href="#/courier/available" class="btn-nav" style="border-color: #cbd5e1; color: #334155;">
-          ← Voltar para lista de pedidos
-        </a>
-        <button id="btn-finalizar-viagem" class="btn-cancel-trip" type="button">
-          Concluir / Cancelar viagem (teste)
-        </button>
-      </div>
+      ${
+        entregues === total
+          ? `
+        <div class="trip-finished-card">
+          <div style="font-size: 2.5rem;">🎉</div>
+          <h3>Todas as entregas foram concluídas com sucesso!</h3>
+          <p>Você finalizou com êxito todas as ${total} paradas desta viagem.</p>
+          <button id="btn-concluir-viagem" class="btn-confirm-delivery" style="padding: 12px 28px; font-size: 1rem; cursor: pointer;" type="button">
+            Concluir Viagem e Voltar
+          </button>
+        </div>
+        `
+          : `
+        <div class="trip-footer">
+          <a href="#/courier/available" class="btn-nav" style="border-color: #cbd5e1; color: #334155;">
+            ← Voltar para lista de pedidos
+          </a>
+          <button id="btn-cancelar-viagem" class="btn-cancel-trip" type="button">
+            Cancelar viagem (teste)
+          </button>
+        </div>
+        `
+      }
     </main>
   `;
 
-  const btnFinalizar = document.getElementById("btn-finalizar-viagem");
-  if (btnFinalizar) {
-    btnFinalizar.addEventListener("click", () => {
+  // Critério 1 e 2: Filtrar apenas números no input e limpar erro na digitação
+  root.querySelectorAll(".input-delivery-code").forEach((input) => {
+    input.addEventListener("input", (e) => {
+      const valorOriginal = e.target.value;
+      const valorFiltrado = valorOriginal.replace(/\D/g, "").slice(0, 4);
+      if (valorOriginal !== valorFiltrado) {
+        e.target.value = valorFiltrado;
+      }
+      input.classList.remove("has-error");
+      const pedidoId = input.dataset.pedidoId;
+      const errorEl = root.querySelector(`.code-error-msg[data-error-pedido-id="${pedidoId}"]`);
+      if (errorEl) {
+        errorEl.style.display = "none";
+        errorEl.textContent = "";
+      }
+    });
+
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        const pedidoId = input.dataset.pedidoId;
+        const btn = root.querySelector(`.btn-confirm-delivery[data-pedido-id="${pedidoId}"]`);
+        if (btn) btn.click();
+      }
+    });
+  });
+
+  // Foca automaticamente no input da parada ativa
+  const activeInput = root.querySelector(".code-box.active .input-delivery-code");
+  if (activeInput) {
+    activeInput.focus();
+  }
+
+  // Critério 2, 3 e 4: Confirmar entrega
+  root.querySelectorAll(".btn-confirm-delivery[data-pedido-id]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const pedidoId = btn.dataset.pedidoId;
+      const input = root.querySelector(`.input-delivery-code[data-pedido-id="${pedidoId}"]`);
+      const errorEl = root.querySelector(`.code-error-msg[data-error-pedido-id="${pedidoId}"]`);
+      const codigoDigitado = input ? input.value.trim() : "";
+
+      const resultado = validarEConfirmarEntrega(pedidoId, codigoDigitado);
+
+      if (!resultado.sucesso) {
+        if (input) {
+          input.classList.add("has-error");
+          input.focus();
+          input.select();
+        }
+        if (errorEl) {
+          errorEl.textContent = `⚠️ ${resultado.erro}`;
+          errorEl.style.display = "flex";
+        }
+        exibirToast(resultado.erro, "erro");
+        return;
+      }
+
+      // Sucesso
+      exibirToast(resultado.mensagem, "sucesso");
+      setTimeout(() => {
+        renderCourierTrip(root);
+      }, 500);
+    });
+  });
+
+  // Concluir viagem após todas as entregas
+  const btnConcluir = root.querySelector("#btn-concluir-viagem");
+  if (btnConcluir) {
+    btnConcluir.addEventListener("click", () => {
       finalizarViagem();
-      alert("Viagem finalizada!");
-      location.hash = "#/courier/available";
-      location.reload();
+      exibirToast("Viagem finalizada com sucesso!", "sucesso");
+      setTimeout(() => {
+        location.hash = "#/courier/available";
+      }, 500);
     });
   }
+
+  // Cancelar viagem em andamento
+  const btnCancelar = root.querySelector("#btn-cancelar-viagem");
+  if (btnCancelar) {
+    btnCancelar.addEventListener("click", () => {
+      if (confirm("Deseja realmente cancelar/encerrar esta viagem?")) {
+        finalizarViagem();
+        location.hash = "#/courier/available";
+        location.reload();
+      }
+    });
+  }
+
+  vincularTrocaPerfil(root);
 }

@@ -8,7 +8,9 @@ import {
   salvarPedidos,
   PEDIDOS_INICIAIS,
 } from "../services/orders.js";
-import { lerSessao } from "../services/storage.js";
+import { lerSessao, gravarSessao } from "../services/storage.js";
+import { rotas, rotaDoPerfil, navegar } from "../utils/routes.js";
+import { listarEntregadores, obterEmpresa } from "../services/companies.js";
 
 const ESTILOS_ID = "peddi-courier-styles";
 
@@ -41,6 +43,9 @@ function injetarEstilos() {
     .btn-nav:hover { color: #fff; border-color: #666; }
     .btn-nav.active { background: var(--primary-color); color: #fff; border-color: var(--primary-color); }
     .topbar-right { display: flex; gap: 10px; align-items: center; }
+    .select-courier-topbar { background: #262930; color: #f2f1ee; border: 1px solid #383c45; padding: 6px 12px; border-radius: 6px; font-size: 0.85rem; cursor: pointer; outline: none; font-family: inherit; max-width: 280px; }
+    .select-courier-topbar:hover, .select-courier-topbar:focus { border-color: #666; }
+    .select-courier-topbar option { background: #1e1e24; color: #fff; }
     .container { max-width: 600px; margin: 20px auto; padding: 0 16px 140px 16px; }
     .hero-card { background-color: var(--dark-bg); color: #fff; padding: 20px; border-radius: 12px; margin-bottom: 25px; }
     .hero-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
@@ -149,7 +154,22 @@ export function renderCourierAvailable(root) {
   injetarEstilos();
 
   const sessao = lerSessao();
-  const courierId = sessao.courierId || "ct_1";
+  const entregadores = listarEntregadores();
+  const courierId = sessao.courierId || (entregadores.find((c) => c.active) ?? entregadores[0]).id;
+  const entregadorAtual = entregadores.find((c) => c.id === courierId) || entregadores[0];
+  const empresaAtual = obterEmpresa(entregadorAtual.companyId);
+  const nomeEmpresa = empresaAtual?.name ?? "Forno da Vila";
+  const nomeEntregador = entregadorAtual.name;
+  const codigoEntregador = entregadorAtual.id.toUpperCase();
+
+  const opcoesEntregadores = entregadores
+    .map((c) => {
+      const emp = obterEmpresa(c.companyId);
+      const label = `${c.name} · ${emp?.name ?? ""}${c.active ? "" : " (inativo)"}`;
+      return `<option value="${c.id}" ${c.id === entregadorAtual.id ? "selected" : ""}>${label}</option>`;
+    })
+    .join("");
+
   const pedidosProntos = listarPedidosProntos();
   const viagemAtiva = obterViagemAtual();
 
@@ -159,16 +179,18 @@ export function renderCourierAvailable(root) {
 
     <header class="topbar">
       <div class="topbar-left">
-        <a href="#/" class="logo-icon-small">P</a>
+        <a href="${rotas.inicio()}" class="logo-icon-small" title="Página Inicial">P</a>
         <span><b>Peddi</b> Modo demonstração: troca de perfil</span>
       </div>
       <nav class="topbar-nav">
-        <a href="#/admin/orders" class="btn-nav">Estabelecimento</a>
-        <a href="#/menu" class="btn-nav">Cliente</a>
-        <a href="#/courier/available" class="btn-nav active">Entregador</a>
+        <a href="${rotas.admin()}" class="btn-nav" data-perfil="admin">Estabelecimento</a>
+        <a href="${rotas.pedidos()}" class="btn-nav" data-perfil="cliente">Cliente</a>
+        <a href="${rotas.entregador()}" class="btn-nav active" data-perfil="entregador">Entregador</a>
       </nav>
       <div class="topbar-right">
-        <span class="btn-nav" style="border:none; cursor:default;">Rafael Mota · Forno da Vila</span>
+        <select id="select-entregador-topbar" class="select-courier-topbar" aria-label="Entregador em demonstração">
+          ${opcoesEntregadores}
+        </select>
       </div>
     </header>
 
@@ -193,12 +215,14 @@ export function renderCourierAvailable(root) {
           <div class="hero-brand">
             <span class="logo-icon-small">P</span> Peddi Entregas
           </div>
-          <span class="status-badge">Ativo</span>
+          <span class="status-badge" style="${entregadorAtual.active ? '' : 'background: #fee2e2; color: #b91c1c;'}">
+            ${entregadorAtual.active ? "Ativo" : "Inativo"}
+          </span>
         </div>
         <div class="hero-body">
           <p>Vinculado a</p>
-          <h2>Forno da Vila</h2>
-          <p>Rafael Mota · E-00017</p>
+          <h2>${nomeEmpresa}</h2>
+          <p>${nomeEntregador} · ${codigoEntregador}</p>
         </div>
       </div>
 
@@ -243,10 +267,10 @@ export function renderCourierAvailable(root) {
   `;
 
   // Configurar interatividade de seleção e trava atômica (RF-ENT-02, RF-ENT-03 e RF-ENT-04)
-  configurarSelecaoEConcorrencia(courierId);
+  configurarSelecaoEConcorrencia(courierId, root);
 }
 
-function configurarSelecaoEConcorrencia(courierId) {
+function configurarSelecaoEConcorrencia(courierId, root) {
   const selecionados = new Set();
   const contadorEl = document.getElementById("contador-selecionados");
   const btnIniciar = document.getElementById("btn-iniciar");
@@ -277,30 +301,39 @@ function configurarSelecaoEConcorrencia(courierId) {
     }, 4500);
   }
 
+  function toggleSelecao(id, checkbox) {
+    if (selecionados.has(id)) {
+      selecionados.delete(id);
+    } else {
+      // RF-ENT-02: Limite máximo de 3 pedidos
+      if (selecionados.size >= 3) {
+        if (checkbox) {
+          checkbox.checked = false;
+        }
+        mostrarAviso("Limite atingido: você só pode selecionar até 3 pedidos por viagem!");
+        return;
+      }
+      selecionados.add(id);
+    }
+
+    atualizarInterface();
+  }
+
   function vincularEventosCards() {
     const cards = listaPedidosEl.querySelectorAll(".order-card");
     cards.forEach((card) => {
       const id = card.getAttribute("data-id");
       const checkbox = card.querySelector('input[type="checkbox"]');
 
-      card.addEventListener("click", (event) => {
-        const clicouDiretamenteNoCheckbox = event.target === checkbox;
+      if (checkbox) {
+        checkbox.addEventListener("click", (event) => {
+          event.stopPropagation();
+          toggleSelecao(id, checkbox);
+        });
+      }
 
-        if (selecionados.has(id)) {
-          selecionados.delete(id);
-        } else {
-          // RF-ENT-02: Limite máximo de 3 pedidos
-          if (selecionados.size >= 3) {
-            if (clicouDiretamenteNoCheckbox) {
-              checkbox.checked = false;
-            }
-            mostrarAviso("Limite atingido: você só pode selecionar até 3 pedidos por viagem!");
-            return;
-          }
-          selecionados.add(id);
-        }
-
-        atualizarInterface();
+      card.addEventListener("click", () => {
+        toggleSelecao(id, checkbox);
       });
     });
   }
@@ -425,6 +458,32 @@ function configurarSelecaoEConcorrencia(courierId) {
   window.addEventListener("storage", (e) => {
     if (e.key === "peddi_pedidos") {
       atualizarListaPedidos();
+    }
+  });
+
+  // Troca de perfil via topbar
+  root.querySelectorAll("[data-perfil]").forEach((el) => {
+    el.addEventListener("click", (e) => {
+      e.preventDefault();
+      const perfil = el.dataset.perfil;
+      gravarSessao({ ...lerSessao(), role: perfil });
+      navegar(rotaDoPerfil[perfil]());
+    });
+  });
+
+  // Troca de entregador via select da topbar
+  const seletorEntregador = root.querySelector("#select-entregador-topbar");
+  if (seletorEntregador) {
+    seletorEntregador.addEventListener("change", (e) => {
+      gravarSessao({ ...lerSessao(), courierId: e.target.value });
+      location.reload();
+    });
+  }
+
+  // Sincroniza se a sessão mudar em outra aba
+  window.addEventListener("storage", (e) => {
+    if (e.key === "peddi.v1.session") {
+      location.reload();
     }
   });
 
