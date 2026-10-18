@@ -1,0 +1,221 @@
+/* admin-orders.css — Quadro Kanban de pedidos da empresa (admin-pedidos.html).
+   Usa o menu lateral e as variáveis de main.css/admin.css; aqui ficam só as regras do quadro. */
+
+.kbar {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.busca {
+  max-width: 340px;
+}
+
+/* ---- colunas ---- */
+.kanban {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(230px, 1fr));
+  gap: 12px;
+  overflow-x: auto;
+  align-items: start;
+}
+.kcol {
+  --acento: var(--muted);
+  min-width: 0;
+  padding: 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--acento);
+  border-radius: 12px;
+}
+.kcol[data-estado="recebido"] {
+  --acento: var(--blue-ink);
+}
+.kcol[data-estado="em_preparo"] {
+  --acento: var(--amber-ink);
+}
+.kcol[data-estado="pronto"] {
+  --acento: var(--violet-ink);
+}
+.kcol[data-estado="em_entrega"] {
+  --acento: var(--orange-ink);
+}
+
+.kcol-hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 2px 10px;
+}
+.kcol-hd h2 {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 1rem;
+}
+.kcol-n {
+  min-width: 26px;
+  padding: 1px 9px;
+  text-align: center;
+  font-size: 0.8rem;
+  font-weight: 800;
+  border-radius: 99px;
+  background: var(--gray-soft);
+  color: var(--gray-ink);
+}
+
+/* cada coluna rola sozinha quando tem muitos cartões */
+.kcol-lista {
+  display: grid;
+  gap: 10px;
+  max-height: calc(100dvh - 300px);
+  min-height: 80px;
+  overflow-y: auto;
+}
+.kcol-vazio {
+  margin: 0;
+  padding: 18px 8px;
+  text-align: center;
+  border: 1.5px dashed var(--line);
+  border-radius: 10px;
+}
+
+/* ---- cartão ---- */
+.kcard {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.kcard-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+button.oid {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+}
+.kcard-itens {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 0.88rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.kcard-meio {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.kcard .late {
+  color: var(--red-ink);
+  font-weight: 650;
+}
+.kcard-acoes {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ---- encerrados ---- */
+.enc-lista {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 10px;
+}
+.enc-lista .kcol-vazio {
+  grid-column: 1 / -1;
+}
+
+/* ---- detalhes (janela) ---- */
+.det-hd {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.det {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 14px;
+  margin: 0;
+}
+.det dt {
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 650;
+}
+.det dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.det-sub {
+  margin: 18px 0 8px;
+  font-size: 0.95rem;
+}
+.det-itens,
+.hist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.det-itens li {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+.det-obs {
+  flex-basis: 100%;
+}
+.det-total {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line-2);
+}
+.hist li {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line-2);
+}
+.hist li:last-child {
+  border-bottom: 0;
+}
+.hist-nota {
+  flex-basis: 100%;
+  color: var(--ink-2);
+}
+
+/* ---- telas estreitas: as colunas ficam uma embaixo da outra ---- */
+@media (max-width: 760px) {
+  .kanban {
+    grid-template-columns: 1fr;
+    overflow-x: visible;
+  }
+  .kcol-lista {
+    max-height: none;
+  }
+  .busca {
+    max-width: none;
+  }
+}

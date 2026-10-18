@@ -1,0 +1,181 @@
+<!doctype html>
+<!-- admin-pedidos.html — Quadro Kanban de pedidos da empresa. As colunas são fixas aqui; src/pages/admin-orders.js cria os cartões. -->
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>Pedidos · Peddi</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="icon" href="/img/logo.svg" />
+    <link rel="stylesheet" href="/src/styles/main.css" />
+    <link rel="stylesheet" href="/src/styles/pages/admin.css" />
+    <link rel="stylesheet" href="/src/styles/pages/admin-orders.css" />
+  </head>
+  <body>
+    <a class="sr" href="#main">Ir para o conteúdo</a>
+    <div
+      class="demo"
+      id="demo"
+      role="region"
+      aria-label="Controles de demonstração"
+    ></div>
+
+    <div class="adm">
+      <!-- Menu lateral: preenchido por src/components/admin-shell.js -->
+      <aside
+        class="side"
+        id="menu-lateral"
+        aria-label="Navegação do estabelecimento"
+      ></aside>
+      <div class="scrim" id="scrim"></div>
+
+      <div class="adm-main" id="main">
+        <div class="adm-top">
+          <button
+            class="icon-btn burger"
+            id="abrir-menu"
+            type="button"
+            aria-label="Abrir menu"
+            aria-expanded="false"
+          >
+            <span data-icon="menu" data-size="20"></span>
+          </button>
+          <h1 class="grow">Pedidos</h1>
+          <span class="muted small" id="resumo"></span>
+        </div>
+
+        <!-- Busca -->
+        <div class="kbar">
+          <label class="sr" for="busca">Buscar pedido</label>
+          <input
+            class="busca"
+            id="busca"
+            type="search"
+            placeholder="Buscar por número ou cliente"
+            autocomplete="off"
+          />
+        </div>
+
+        <!-- Quadro: uma coluna por etapa. Os cartões entram em [data-lista]. -->
+        <section class="kanban" aria-label="Quadro de pedidos">
+          <section
+            class="kcol"
+            data-estado="recebido"
+            aria-labelledby="h-recebido"
+          >
+            <header class="kcol-hd">
+              <h2 id="h-recebido">
+                <span data-icon="inbox" data-size="17"></span> Recebidos
+              </h2>
+              <span class="kcol-n" data-contagem="recebido">0</span>
+            </header>
+            <div class="kcol-lista" data-lista="recebido"></div>
+          </section>
+
+          <section
+            class="kcol"
+            data-estado="em_preparo"
+            aria-labelledby="h-preparo"
+          >
+            <header class="kcol-hd">
+              <h2 id="h-preparo">
+                <span data-icon="clock" data-size="17"></span> Em preparo
+              </h2>
+              <span class="kcol-n" data-contagem="em_preparo">0</span>
+            </header>
+            <div class="kcol-lista" data-lista="em_preparo"></div>
+          </section>
+
+          <section class="kcol" data-estado="pronto" aria-labelledby="h-pronto">
+            <header class="kcol-hd">
+              <h2 id="h-pronto">
+                <span data-icon="checkc" data-size="17"></span> Prontos
+              </h2>
+              <span class="kcol-n" data-contagem="pronto">0</span>
+            </header>
+            <div class="kcol-lista" data-lista="pronto"></div>
+          </section>
+
+          <section
+            class="kcol"
+            data-estado="em_entrega"
+            aria-labelledby="h-entrega"
+          >
+            <header class="kcol-hd">
+              <h2 id="h-entrega">
+                <span data-icon="bike" data-size="17"></span> Em entrega
+              </h2>
+              <span class="kcol-n" data-contagem="em_entrega">0</span>
+            </header>
+            <div class="kcol-lista" data-lista="em_entrega"></div>
+          </section>
+        </section>
+
+        <!-- Pedidos que já terminaram (entregues, rejeitados, cancelados) nas últimas 24 horas -->
+        <section class="panel" aria-labelledby="h-encerrados">
+          <div class="panel-hd">
+            <h3 id="h-encerrados">Encerrados nas últimas 24 horas</h3>
+            <span class="kcol-n" data-contagem="encerrados">0</span>
+          </div>
+          <div class="enc-lista" data-lista="encerrados"></div>
+        </section>
+      </div>
+    </div>
+
+    <!-- Detalhes do pedido: janela nativa <dialog>, preenchida pelo JS -->
+    <dialog class="modal" id="detalhes" aria-labelledby="det-titulo">
+      <form method="dialog">
+        <div class="m-hd det-hd">
+          <h2 id="det-titulo">Pedido</h2>
+          <span id="det-selo"></span>
+        </div>
+        <div class="m-bd">
+          <dl class="det">
+            <dt>Cliente</dt>
+            <dd id="det-cliente"></dd>
+            <dt>Telefone</dt>
+            <dd id="det-telefone"></dd>
+            <dt>Endereço</dt>
+            <dd id="det-endereco"></dd>
+            <dt>Pagamento</dt>
+            <dd id="det-pagamento"></dd>
+            <dt>Feito em</dt>
+            <dd id="det-criado"></dd>
+          </dl>
+
+          <h3 class="det-sub">Itens</h3>
+          <ul class="det-itens" id="det-itens"></ul>
+          <dl class="det det-total">
+            <dt>Subtotal</dt>
+            <dd id="det-subtotal"></dd>
+            <dt>Taxa de entrega</dt>
+            <dd id="det-taxa"></dd>
+            <dt class="strong">Total</dt>
+            <dd class="strong" id="det-total"></dd>
+          </dl>
+
+          <div id="det-motivo-bloco" hidden>
+            <h3 class="det-sub">Motivo</h3>
+            <p id="det-motivo"></p>
+          </div>
+
+          <h3 class="det-sub">Histórico</h3>
+          <ol class="hist" id="det-historico"></ol>
+        </div>
+        <div class="m-ft">
+          <button type="submit" class="btn btn-ghost">Fechar</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script type="module" src="/src/pages/admin-orders.js"></script>
+  </body>
+</html>
