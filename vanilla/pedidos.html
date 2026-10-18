@@ -1,0 +1,35 @@
+<!doctype html>
+<!-- pedidos.html — Meus pedidos (em andamento e anteriores). -->
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Meus pedidos · Peddi</title>
+    <link rel="icon" href="/img/logo.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <a class="sr" href="#main">Ir para o conteúdo</a>
+    <div class="demo" id="demo" role="region" aria-label="Controles de demonstração"></div>
+    <header class="shop-top" id="topo"></header>
+
+    <main class="container shop-main" id="main">
+      <h1 class="page-title">Meus pedidos</h1>
+
+      <div class="seg tabs" role="group" aria-label="Filtrar pedidos">
+        <button type="button" data-aba="andamento" aria-pressed="true">Em andamento</button>
+        <button type="button" data-aba="anteriores" aria-pressed="false">Anteriores</button>
+      </div>
+
+      <!-- Um cartão por pedido, criado pelo JS -->
+      <div class="stack" id="lista-pedidos"></div>
+    </main>
+
+    <script type="module" src="/src/pages/client-orders.js"></script>
+  </body>
+</html>
