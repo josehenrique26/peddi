@@ -10,6 +10,7 @@ export default defineConfig(({ command }) => ({
       input: {
         index: resolve(import.meta.dirname, "index.html"),
         admin: resolve(import.meta.dirname, "admin.html"),
+        adminPedidos: resolve(import.meta.dirname, "admin-pedidos.html"),
         entregador: resolve(import.meta.dirname, "entregador.html"),
         loja: resolve(import.meta.dirname, "loja.html"),
         carrinho: resolve(import.meta.dirname, "carrinho.html"),
