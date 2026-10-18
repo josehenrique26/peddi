@@ -4,6 +4,9 @@ export const rotas = {
   loja: (slug) => `loja.html?empresa=${encodeURIComponent(slug)}`,
   admin: () => "admin.html",
   pedidos: () => "pedidos.html",
+  carrinho: () => "carrinho.html",
+  checkout: () => "checkout.html",
+  pedido: (id, recemCriado = false) => `pedido.html?id=${encodeURIComponent(id)}${recemCriado ? "&novo=1" : ""}`,
   entregador: () => "entregador.html",
 };
 
