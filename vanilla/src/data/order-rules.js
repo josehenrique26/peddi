@@ -14,3 +14,10 @@ export const ESTADOS_FINAIS = ["entregue", "rejeitado", "cancelado"];
 
 // O cliente só cancela antes de o entregador retirar o pedido.
 export const ESTADOS_CANCELAVEIS = ["recebido", "em_preparo", "pronto"];
+
+// Fluxo da empresa no quadro Kanban: de cada etapa, para qual ela pode avançar o pedido.
+// "pronto" → "em_entrega" não está aqui: quem retira o pedido é o entregador.
+export const PROXIMA_ETAPA = { recebido: "em_preparo", em_preparo: "pronto" };
+
+// A empresa só rejeita um pedido que acabou de chegar.
+export const ESTADOS_REJEITAVEIS = ["recebido"];
