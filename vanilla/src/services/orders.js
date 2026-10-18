@@ -215,6 +215,16 @@ export function iniciarViagem(idsPedidos, courierId = "ct_1") {
     return { sucesso: false, motivo: "nenhum_pedido" };
   }
 
+  // RF-ENT-08 (Critério 1): Com viagem em andamento, Iniciar viagem fica bloqueado com aviso
+  const viagemAtual = obterViagemAtual(courierId);
+  if (viagemAtual && viagemAtual.status === "em_andamento") {
+    return {
+      sucesso: false,
+      motivo: "viagem_em_andamento",
+      erro: "Você já possui uma viagem em andamento. Conclua todas as entregas antes de iniciar uma nova viagem.",
+    };
+  }
+
   // Primeiro faz a conferência atômica da reserva (RF-ENT-03)
   const reserva = reservarPedidosAtomicamente(idsPedidos, courierId);
   if (!reserva.sucesso) {
@@ -263,16 +273,17 @@ export function iniciarViagem(idsPedidos, courierId = "ct_1") {
 }
 
 /**
- * RF-ENT-04: Critério 5 - "Reabrir o sistema retoma a viagem atual"
- * Retorna os dados da viagem atual se ela estiver em andamento.
+ * RF-ENT-04 & RF-ENT-08: Retorna os dados da viagem atual se ela estiver em andamento.
+ * Pode ser filtrado por entregador para garantir 1 viagem por vez para cada um.
  */
-export function obterViagemAtual() {
+export function obterViagemAtual(courierId = null) {
   const salvo = localStorage.getItem(CHAVE_VIAGEM);
   if (!salvo) return null;
 
   try {
     const viagem = JSON.parse(salvo);
     if (!viagem || viagem.status !== "em_andamento") return null;
+    if (courierId && viagem.courierId && viagem.courierId !== courierId) return null;
 
     const todosPedidos = obterPedidos();
     const pedidosDetalhados = viagem.pedidos
@@ -289,7 +300,56 @@ export function obterViagemAtual() {
 }
 
 /**
- * Finaliza a viagem atual
+ * RF-ENT-08: Cancela a entrega de um pedido na viagem (ex: cliente ausente/recusa)
+ */
+export function cancelarEntregaPedido(pedidoId, motivo = "Cancelado pelo cliente/estabelecimento") {
+  const todosPedidos = obterPedidos();
+  const pedidosAtualizados = todosPedidos.map((p) => {
+    if (p.id === pedidoId) {
+      return {
+        ...p,
+        status: "Cancelado",
+        cancelado_em: new Date().toISOString(),
+        motivo_cancelamento: motivo,
+      };
+    }
+    return p;
+  });
+
+  salvarPedidos(pedidosAtualizados);
+
+  try {
+    const dados = obterDados();
+    if (dados && Array.isArray(dados.orders)) {
+      const numLimpo = pedidoId.replace(/\D/g, "");
+      const pedidoGlobal = dados.orders.find(
+        (o) =>
+          o.id === pedidoId ||
+          o.id === `PED-${numLimpo}` ||
+          String(o.id) === String(numLimpo)
+      );
+      if (pedidoGlobal) {
+        pedidoGlobal.state = "cancelado";
+        if (!pedidoGlobal.history) pedidoGlobal.history = [];
+        pedidoGlobal.history.push({
+          state: "cancelado",
+          by: "Estabelecimento",
+          at: Date.now(),
+          note: motivo,
+        });
+        salvarDados();
+        window.dispatchEvent(new Event("storage"));
+      }
+    }
+  } catch (err) {
+    console.error("Erro ao sincronizar cancelamento com dados globais:", err);
+  }
+
+  return { sucesso: true, pedidoId, status: "Cancelado" };
+}
+
+/**
+ * RF-ENT-08 (Critérios 2 e 3): Finaliza a viagem quando todos os pedidos forem Entregues ou Cancelados
  */
 export function finalizarViagem() {
   try {
@@ -302,8 +362,9 @@ export function finalizarViagem() {
           trip.state = "concluida";
           trip.finishedAt = Date.now();
         }
-        salvarDados();
       }
+      salvarDados();
+      window.dispatchEvent(new Event("storage"));
     }
   } catch (err) {
     console.error("Erro ao finalizar viagem no storage global:", err);
@@ -311,6 +372,7 @@ export function finalizarViagem() {
 
   localStorage.removeItem(CHAVE_VIAGEM);
   localStorage.removeItem(CHAVE_SELECIONADOS);
+  window.dispatchEvent(new CustomEvent("peddi_viagem_encerrada"));
 }
 
 /**
@@ -532,10 +594,10 @@ export function validarEConfirmarEntrega(pedidoId, codigoDigitado) {
     };
   }
 
-  // RF-ENT-05: Confirmação na ordem das paradas
+  // RF-ENT-05 & RF-ENT-08: Confirmação na ordem das paradas (ignora já Entregues ou Cancelados)
   const paradaPendenteAnterior = pedidos
     .slice(0, indiceAlvo)
-    .find((p) => p.status !== "Entregue");
+    .find((p) => p.status !== "Entregue" && p.status !== "Cancelado");
 
   if (paradaPendenteAnterior) {
     const numeroParadaPendente = pedidos.indexOf(paradaPendenteAnterior) + 1;
@@ -547,11 +609,11 @@ export function validarEConfirmarEntrega(pedidoId, codigoDigitado) {
   }
 
   const pedidoAlvo = pedidos[indiceAlvo];
-  if (pedidoAlvo.status === "Entregue") {
+  if (pedidoAlvo.status === "Entregue" || pedidoAlvo.status === "Cancelado") {
     return {
       sucesso: false,
       bloqueado: false,
-      erro: "Esta entrega já foi confirmada anteriormente.",
+      erro: `Esta parada já foi ${pedidoAlvo.status === "Entregue" ? "confirmada" : "cancelada"} anteriormente.`,
     };
   }
 
@@ -636,10 +698,10 @@ export function validarEConfirmarEntrega(pedidoId, codigoDigitado) {
   // RF-ENT-06 (Critério 3): Cliente e empresa veem o pedido como Entregue
   sincronizarPedidoEntregueComDadosGlobais(pedidoAlvo, agoraIso);
 
-  // RF-ENT-06 (Critério 2): Progresso da viagem atualizado
+  // RF-ENT-06 & RF-ENT-08 (Critério 2): Progresso da viagem atualizado (todos Entregues ou Cancelados)
   const viagemAtualizada = obterViagemAtual();
-  const todosEntregues = viagemAtualizada?.pedidosDetalhados.every(
-    (p) => p.status === "Entregue"
+  const todosConcluidos = viagemAtualizada?.pedidosDetalhados.every(
+    (p) => p.status === "Entregue" || p.status === "Cancelado"
   );
 
   return {
@@ -647,7 +709,8 @@ export function validarEConfirmarEntrega(pedidoId, codigoDigitado) {
     bloqueado: false,
     tentativasRestantes: tentativasAtuais,
     mensagem: `Entrega do Pedido ${pedidoId} confirmada com sucesso!`,
-    todosEntregues: Boolean(todosEntregues),
+    todosEntregues: Boolean(todosConcluidos),
+    todosConcluidos: Boolean(todosConcluidos),
     pedido: pedidosAtualizados.find((p) => p.id === pedidoId),
   };
 }

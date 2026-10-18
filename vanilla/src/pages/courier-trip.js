@@ -5,6 +5,7 @@ import {
   finalizarViagem,
   validarEConfirmarEntrega,
   resetarTentativasPedido,
+  cancelarEntregaPedido,
 } from "../services/orders.js";
 import { lerSessao, gravarSessao } from "../services/storage.js";
 import { rotas, rotaDoPerfil, navegar } from "../utils/routes.js";
@@ -85,6 +86,10 @@ function injetarEstilosTrip() {
       background: #16a34a;
       box-shadow: 0 2px 6px rgba(22, 163, 74, 0.3);
     }
+    .stop-number.cancelado {
+      background: #64748b;
+      box-shadow: 0 2px 6px rgba(100, 116, 139, 0.3);
+    }
     .stop-number.blocked-stop {
       background: #dc2626;
       box-shadow: 0 2px 6px rgba(220, 38, 38, 0.35);
@@ -101,6 +106,7 @@ function injetarEstilosTrip() {
     .order-tag { font-weight: 700; font-size: 1.05rem; color: var(--text-main); }
     .status-badge-trip { background: var(--orange-bg); color: var(--orange-text); padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; }
     .status-badge-trip.entregue { background: var(--green-bg); color: var(--green-text); }
+    .status-badge-trip.cancelado { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
     .status-badge-trip.blocked { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
     
     .stop-addr { font-size: 1.15rem; font-weight: 700; color: #1e293b; margin-bottom: 4px; }
@@ -340,6 +346,52 @@ function injetarEstilosTrip() {
     }
     .confirmed-text b { display: block; font-size: 0.95rem; color: #14532d; }
     .confirmed-text small { color: #166534; font-size: 0.82rem; }
+
+    /* RF-ENT-08: Pedido cancelado */
+    .delivery-cancelled-box {
+      background: #f8fafc;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: #475569;
+    }
+    .cancelled-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #64748b;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 1.1rem;
+    }
+    .cancelled-text b { display: block; font-size: 0.95rem; color: #334155; }
+    .cancelled-text small { color: #64748b; font-size: 0.82rem; }
+
+    .btn-cancel-stop {
+      background: transparent;
+      border: 1px solid #cbd5e1;
+      color: #64748b;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+    .btn-cancel-stop:hover {
+      background: #fee2e2;
+      color: #b91c1c;
+      border-color: #fca5a5;
+    }
 
     .locked-box {
       background: #f8fafc;
@@ -584,7 +636,7 @@ export function renderCourierTrip(root) {
     })
     .join("");
 
-  const viagem = obterViagemAtual();
+  const viagem = obterViagemAtual(courierId);
 
   // Se não houver viagem ativa
   if (!viagem || !viagem.pedidosDetalhados || viagem.pedidosDetalhados.length === 0) {
@@ -623,9 +675,12 @@ export function renderCourierTrip(root) {
 
   const pedidos = viagem.pedidosDetalhados;
   const entregues = pedidos.filter((p) => p.status === "Entregue").length;
+  const cancelados = pedidos.filter((p) => p.status === "Cancelado").length;
+  const concluidos = entregues + cancelados;
   const total = pedidos.length;
-  const percentual = total > 0 ? Math.round((entregues / total) * 100) : 0;
-  const indiceParadaAtual = pedidos.findIndex((p) => p.status !== "Entregue");
+  const percentual = total > 0 ? Math.round((concluidos / total) * 100) : 0;
+  const indiceParadaAtual = pedidos.findIndex((p) => p.status !== "Entregue" && p.status !== "Cancelado");
+  const todosConcluidos = concluidos === total;
 
   root.innerHTML = `
     <header class="topbar">
@@ -653,14 +708,14 @@ export function renderCourierTrip(root) {
         <span style="font-size: 0.85rem; color: #64748b; font-weight: 600;">Viagem em andamento</span>
       </div>
 
-      <!-- RF-ENT-04, RF-ENT-05 & RF-ENT-06: Barra de progresso X de N entregues -->
+      <!-- RF-ENT-04, RF-ENT-05, RF-ENT-06 & RF-ENT-08: Barra de progresso X de N paradas concluídas -->
       <section class="prog-card">
         <div class="track">
           <i class="track-bar" style="width: ${percentual}%;"></i>
         </div>
         <div class="prog-row">
-          <b>${entregues} de ${total} entregues (${percentual}%)</b>
-          <small>${entregues === total ? "Viagem concluída 🎉" : `Parada atual: ${indiceParadaAtual + 1} de ${total}`}</small>
+          <b>${concluidos} de ${total} paradas concluídas (${percentual}%)${cancelados > 0 ? ` · <span style="font-size:0.85rem; font-weight:normal; color:#64748b;">(${entregues} entregue${entregues > 1 ? 's' : ''}, ${cancelados} cancelado${cancelados > 1 ? 's' : ''})</span>` : ''}</b>
+          <small>${todosConcluidos ? "Viagem concluída 🎉" : `Parada atual: ${indiceParadaAtual + 1} de ${total}`}</small>
         </div>
       </section>
 
@@ -673,6 +728,7 @@ export function renderCourierTrip(root) {
               `${pedido.endereco_completo}, ${pedido.bairro}, João Pessoa`
             );
             const isEntregue = pedido.status === "Entregue";
+            const isCancelado = pedido.status === "Cancelado";
             const tentativasRestantes =
               typeof pedido.tentativas_restantes === "number"
                 ? pedido.tentativas_restantes
@@ -685,9 +741,17 @@ export function renderCourierTrip(root) {
                   minute: "2-digit",
                 })
               : "";
+            const horaCancelamento = pedido.cancelado_em
+              ? new Date(pedido.cancelado_em).toLocaleTimeString("pt-BR", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              : "";
 
             const stopNumberClass = isEntregue
               ? "stop-number entregue"
+              : isCancelado
+              ? "stop-number cancelado"
               : isBloqueado && isAtual
               ? "stop-number blocked-stop"
               : isAtual
@@ -696,12 +760,16 @@ export function renderCourierTrip(root) {
 
             const statusBadgeClass = isEntregue
               ? "status-badge-trip entregue"
+              : isCancelado
+              ? "status-badge-trip cancelado"
               : isBloqueado && isAtual
               ? "status-badge-trip blocked"
               : "";
 
             const statusTexto = isEntregue
               ? "Entregue"
+              : isCancelado
+              ? "Cancelado"
               : isBloqueado && isAtual
               ? "Bloqueado"
               : pedido.status || "Saiu para entrega";
@@ -709,7 +777,7 @@ export function renderCourierTrip(root) {
             return `
           <article class="stop" data-pedido-id="${pedido.id}">
             <span class="${stopNumberClass}">
-              ${isEntregue ? "✓" : isBloqueado && isAtual ? "🚫" : numeroParada}
+              ${isEntregue ? "✓" : isCancelado ? "✕" : isBloqueado && isAtual ? "🚫" : numeroParada}
             </span>
             <div class="stop-card">
               <div class="stop-header">
@@ -754,7 +822,7 @@ export function renderCourierTrip(root) {
                 </a>
               </div>
 
-              <!-- RF-ENT-05, RF-ENT-06 & RF-ENT-07: Validação por código, tentativas e finalização -->
+              <!-- RF-ENT-05, RF-ENT-06, RF-ENT-07 & RF-ENT-08: Validação por código, tentativas e finalização -->
               <div class="delivery-confirm-section">
                 ${
                   isEntregue
@@ -764,6 +832,16 @@ export function renderCourierTrip(root) {
                     <div class="confirmed-text">
                       <b>Entrega confirmada com sucesso!</b>
                       <small>Status: Entregue · Confirmado${horaEntrega ? ` às ${horaEntrega}` : ""}</small>
+                    </div>
+                  </div>
+                  `
+                    : isCancelado
+                    ? `
+                  <div class="delivery-cancelled-box">
+                    <span class="cancelled-icon">✕</span>
+                    <div class="cancelled-text">
+                      <b>Entrega Cancelada</b>
+                      <small>${pedido.motivo_cancelamento || "Cancelado"} · Registrado${horaCancelamento ? ` às ${horaCancelamento}` : ""}</small>
                     </div>
                   </div>
                   `
@@ -796,7 +874,10 @@ export function renderCourierTrip(root) {
                         Ligar para ${empresaAtual?.name || "Estabelecimento"}
                       </a>
                     </div>
-                    <div class="blocked-test-actions">
+                    <div class="blocked-test-actions" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                      <button type="button" class="btn-cancel-stop" data-cancel-pedido-id="${pedido.id}">
+                        ✕ Cancelar entrega deste pedido (insucesso)
+                      </button>
                       <button type="button" class="btn-reset-attempts" data-reset-pedido-id="${pedido.id}">
                         🔄 Resetar tentativas (demonstração / teste)
                       </button>
@@ -836,6 +917,11 @@ export function renderCourierTrip(root) {
                       <span>💡 Código do cliente para teste:</span>
                       <b>${pedido.codigo_entrega || "----"}</b>
                     </div>
+                    <div style="margin-top: 10px; display: flex; justify-content: flex-end;">
+                      <button type="button" class="btn-cancel-stop" data-cancel-pedido-id="${pedido.id}">
+                        ✕ Cancelar entrega deste pedido (cliente ausente)
+                      </button>
+                    </div>
                   </div>
                   `
                     : `
@@ -859,14 +945,14 @@ export function renderCourierTrip(root) {
       </div>
 
       ${
-        entregues === total
+        todosConcluidos
           ? `
         <div class="trip-finished-card">
           <div style="font-size: 2.5rem;">🎉</div>
-          <h3>Todas as entregas foram concluídas com sucesso!</h3>
-          <p>Você finalizou com êxito todas as ${total} paradas desta viagem.</p>
+          <h3>Todas as paradas foram concluídas!</h3>
+          <p>Esta viagem foi finalizada com êxito (${entregues} entregue${entregues > 1 ? 's' : ''}${cancelados > 0 ? `, ${cancelados} cancelado${cancelados > 1 ? 's' : ''}` : ''}).</p>
           <button id="btn-concluir-viagem" class="btn-confirm-delivery" style="padding: 12px 28px; font-size: 1rem; cursor: pointer;" type="button">
-            Concluir Viagem e Voltar
+            Encerrar Viagem e Voltar à Lista de Pedidos 📦
           </button>
         </div>
         `
@@ -876,7 +962,7 @@ export function renderCourierTrip(root) {
             ← Voltar para lista de pedidos
           </a>
           <button id="btn-cancelar-viagem" class="btn-cancel-trip" type="button">
-            Cancelar viagem (teste)
+            Cancelar viagem inteira (teste)
           </button>
         </div>
         `
@@ -974,15 +1060,31 @@ export function renderCourierTrip(root) {
     });
   });
 
-  // Concluir viagem após todas as entregas
+  // RF-ENT-08 (Critério 2): Cancelar entrega de parada individual (ex: cliente ausente/recusa)
+  root.querySelectorAll(".btn-cancel-stop[data-cancel-pedido-id]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const pedidoId = btn.dataset.cancelPedidoId;
+      const motivo = prompt(
+        `Informe o motivo do cancelamento da entrega do pedido ${pedidoId}:`,
+        "Cliente ausente após tentativas de contato"
+      );
+      if (motivo !== null && motivo.trim() !== "") {
+        cancelarEntregaPedido(pedidoId, motivo.trim());
+        exibirToast(`Entrega do pedido ${pedidoId} registrada como cancelada.`, "sucesso");
+        renderCourierTrip(root);
+      }
+    });
+  });
+
+  // RF-ENT-08 (Critério 3): Concluir viagem após todas as entregas (ou cancelamentos) e voltar à lista
   const btnConcluir = root.querySelector("#btn-concluir-viagem");
   if (btnConcluir) {
     btnConcluir.addEventListener("click", () => {
       finalizarViagem();
-      exibirToast("Viagem finalizada com sucesso!", "sucesso");
+      exibirToast("Viagem encerrada com sucesso! Retornando à lista de pedidos...", "sucesso");
       setTimeout(() => {
         location.hash = "#/courier/available";
-      }, 500);
+      }, 400);
     });
   }
 

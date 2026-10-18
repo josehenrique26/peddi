@@ -171,10 +171,10 @@ export function renderCourierAvailable(root) {
     .join("");
 
   const pedidosProntos = listarPedidosProntos();
-  const viagemAtiva = obterViagemAtual();
+  const viagemAtiva = obterViagemAtual(courierId);
 
   root.innerHTML = `
-    <!-- Container para avisos flutuantes (RF-ENT-02, RF-ENT-03 e RF-ENT-04) -->
+    <!-- Container para avisos flutuantes (RF-ENT-02, RF-ENT-03, RF-ENT-04 e RF-ENT-08) -->
     <div id="container-aviso" style="display: none;"></div>
 
     <header class="topbar">
@@ -195,14 +195,17 @@ export function renderCourierAvailable(root) {
     </header>
 
     <main class="container">
-      <!-- RF-ENT-04: Critério 5 - Se houver viagem ativa, exibe banner para retomar imediatamente -->
+      <!-- RF-ENT-04 & RF-ENT-08: Se houver viagem ativa, exibe banner com bloqueio explícito -->
       ${
         viagemAtiva
           ? `
         <div class="banner-viagem-ativa">
           <div>
             <b>🛵 Você possui uma viagem em andamento!</b>
-            <small>${viagemAtiva.pedidos.length} pedidos em rota de entrega</small>
+            <small>${viagemAtiva.pedidos.length} pedido(s) em rota de entrega · Início de nova viagem bloqueado</small>
+            <div style="background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; padding: 4px 8px; border-radius: 4px; font-size: 0.78rem; font-weight: 700; margin-top: 6px; display: inline-flex; align-items: center; gap: 4px;">
+              🔒 Iniciar nova viagem fica bloqueado com aviso até a conclusão da atual (RF-ENT-08)
+            </div>
           </div>
           <a href="#/courier/trip" class="btn-retomar">Ver viagem atual →</a>
         </div>
@@ -250,18 +253,40 @@ export function renderCourierAvailable(root) {
       </div>
     </main>
 
-    <!-- RF-ENT-02: Barra de ação fixa inferior com contador e botão de iniciar -->
+    <!-- RF-ENT-02 & RF-ENT-08: Barra de ação fixa inferior com bloqueio se houver viagem ativa -->
     <div id="dock-inferior" class="fixed-bottom" style="${pedidosProntos.length === 0 ? "display: none;" : ""}">
       <div class="action-bar">
-        <span class="action-bar-counter">
-          <b id="contador-selecionados">0</b> de 3 selecionados
-        </span>
-        <div class="action-buttons">
-          <button id="btn-limpar" class="btn-clear" type="button">Limpar</button>
-          <button id="btn-iniciar" class="btn-start-trip" type="button" disabled>
-            Iniciar viagem 🛵
-          </button>
-        </div>
+        ${
+          viagemAtiva
+            ? `
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 1.3rem;">🔒</span>
+            <div>
+              <b style="color: #fed7aa; font-size: 0.95rem; display: block;">Iniciar viagem bloqueado</b>
+              <small style="color: #cbd5e1; font-size: 0.8rem;">Viagem em andamento (${viagemAtiva.pedidos.length} paradas)</small>
+            </div>
+          </div>
+          <div class="action-buttons">
+            <button id="btn-iniciar" class="btn-start-trip" type="button" disabled title="Bloqueado: conclua sua viagem em andamento" style="opacity: 0.5; cursor: not-allowed;">
+              Iniciar viagem 🔒
+            </button>
+            <a href="#/courier/trip" class="btn-retomar" style="font-size: 0.85rem; padding: 8px 14px;">
+              Ver viagem atual →
+            </a>
+          </div>
+        `
+            : `
+          <span class="action-bar-counter">
+            <b id="contador-selecionados">0</b> de 3 selecionados
+          </span>
+          <div class="action-buttons">
+            <button id="btn-limpar" class="btn-clear" type="button">Limpar</button>
+            <button id="btn-iniciar" class="btn-start-trip" type="button" disabled>
+              Iniciar viagem 🛵
+            </button>
+          </div>
+        `
+        }
       </div>
     </div>
   `;
@@ -272,6 +297,9 @@ export function renderCourierAvailable(root) {
 
 function configurarSelecaoEConcorrencia(courierId, root) {
   const selecionados = new Set();
+  const viagemAtiva = obterViagemAtual(courierId);
+  const temViagemAtiva = Boolean(viagemAtiva);
+
   const contadorEl = document.getElementById("contador-selecionados");
   const btnIniciar = document.getElementById("btn-iniciar");
   const btnLimpar = document.getElementById("btn-limpar");
@@ -302,6 +330,15 @@ function configurarSelecaoEConcorrencia(courierId, root) {
   }
 
   function toggleSelecao(id, checkbox) {
+    // RF-ENT-08 (Critério 1): Com viagem em andamento, seleção de pedidos é bloqueada com aviso
+    if (temViagemAtiva) {
+      if (checkbox) {
+        checkbox.checked = false;
+      }
+      mostrarAviso("Bloqueado: você já possui uma viagem em andamento. Conclua todas as entregas atuais antes de iniciar uma nova viagem!", "erro");
+      return;
+    }
+
     if (selecionados.has(id)) {
       selecionados.delete(id);
     } else {
@@ -362,7 +399,7 @@ function configurarSelecaoEConcorrencia(courierId, root) {
     }
 
     if (btnIniciar) {
-      btnIniciar.disabled = total === 0;
+      btnIniciar.disabled = temViagemAtiva || total === 0;
     }
 
     const cards = listaPedidosEl.querySelectorAll(".order-card");
@@ -382,17 +419,28 @@ function configurarSelecaoEConcorrencia(courierId, root) {
     localStorage.setItem("peddi_pedidos_selecionados", JSON.stringify(Array.from(selecionados)));
   }
 
-  // RF-ENT-03 e RF-ENT-04: Botão Iniciar viagem com trava atômica e criação da viagem ativa
+  // RF-ENT-03, RF-ENT-04 e RF-ENT-08: Botão Iniciar viagem com trava atômica e bloqueio de viagem simultânea
   if (btnIniciar) {
     btnIniciar.addEventListener("click", () => {
+      // RF-ENT-08 (Critério 1): Com viagem em andamento, Iniciar viagem fica bloqueado com aviso
+      if (temViagemAtiva) {
+        mostrarAviso("Iniciar viagem bloqueado: você já possui uma viagem em andamento. Conclua todas as entregas atuais primeiro!", "erro");
+        return;
+      }
+
       if (selecionados.size === 0) return;
 
       const idsParaIniciar = Array.from(selecionados);
 
-      // RF-ENT-04 Critério 1 e 2: Inicia a viagem, gera códigos de 4 dígitos e muda status para 'Saiu para entrega'
+      // RF-ENT-04 & RF-ENT-08: Inicia a viagem, gera códigos de 4 dígitos e muda status para 'Saiu para entrega'
       const resultado = iniciarViagem(idsParaIniciar, courierId);
 
       if (!resultado.sucesso) {
+        if (resultado.motivo === "viagem_em_andamento") {
+          mostrarAviso(`Bloqueado: ${resultado.erro}`, "erro");
+          return;
+        }
+
         // RF-ENT-03 Critério 2: Se outro pegou, aparece aviso e o pedido sai da seleção
         const ocupados = resultado.ocupados || [];
         const plural = ocupados.length > 1;
@@ -459,6 +507,13 @@ function configurarSelecaoEConcorrencia(courierId, root) {
     if (e.key === "peddi_pedidos") {
       atualizarListaPedidos();
     }
+    if (e.key === "peddi_viagem_atual") {
+      renderCourierAvailable(root);
+    }
+  });
+
+  window.addEventListener("peddi_viagem_encerrada", () => {
+    renderCourierAvailable(root);
   });
 
   // Troca de perfil via topbar
