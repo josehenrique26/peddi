@@ -1,8 +1,6 @@
 // src/pages/admin-dashboard.js — lógica do dashboard da empresa (admin.html).
 // Regra do projeto: o HTML fixo fica no .html; o JS só preenche valores (textContent)
 // e cria os itens de LISTAS com document.createElement.
-import "../styles/main.css";
-import "../styles/pages/admin.css";
 
 import { aplicarTemaSalvo } from "../utils/theme.js";
 import { exigirEmpresa } from "../utils/guard.js";
@@ -121,7 +119,7 @@ function criarItemDeAtividade(pedido, evento) {
 
   const numero = document.createElement("a");
   numero.className = "oid";
-  numero.href = "admin-pedidos.html";
+  numero.href = `admin-pedidos.html?pedido=${encodeURIComponent(pedido.id)}`;
   numero.textContent = pedido.id;
 
   const cliente = document.createElement("span");
