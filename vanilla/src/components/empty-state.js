@@ -1,7 +1,7 @@
-// src/components/empty-state.js — bloco "nada por aqui". Devolve um elemento.
+// src/components/empty-state.js — bloco "nada por aqui". Devolve um elemento. "acao" (opcional) é um botão ou link.
 import { icone } from "./icon.js";
 
-export function estadoVazio({ icone: nomeIcone = "receipt", titulo, texto }) {
+export function estadoVazio({ icone: nomeIcone = "receipt", titulo, texto, acao }) {
   const caixa = document.createElement("div");
   caixa.className = "empty";
 
@@ -18,6 +18,7 @@ export function estadoVazio({ icone: nomeIcone = "receipt", titulo, texto }) {
     p.textContent = texto;
     caixa.append(p);
   }
+  if (acao) caixa.append(acao); // botão ou link opcional
   return caixa;
 }
 

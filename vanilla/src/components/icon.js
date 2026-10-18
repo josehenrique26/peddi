@@ -23,6 +23,12 @@ const ICONES = {
   menu: [["path", { d: "M4 6h16M4 12h16M4 18h16" }]],
   plus: [["path", { d: "M12 5v14M5 12h14" }]],
   bag: [["path", { d: "M6 8h12l1 12H5zM9 8a3 3 0 0 1 6 0" }]],
+  cart: [["circle", { cx: 9, cy: 20, r: 1.5 }], ["circle", { cx: 18, cy: 20, r: 1.5 }], ["path", { d: "M2 3h3l2.5 12h11L21 7H6" }]],
+  search: [["circle", { cx: 11, cy: 11, r: 7 }], ["path", { d: "m20 20-3.5-3.5" }]],
+  trash: [["path", { d: "M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 10v6M14 10v6" }]],
+  back: [["path", { d: "M19 12H5M11 6l-6 6 6 6" }]],
+  alert: [["path", { d: "M12 3 2 20h20zM12 10v5M12 18h.01" }]],
+  info: [["circle", { cx: 12, cy: 12, r: 9 }], ["path", { d: "M12 11v5M12 8h.01" }]],
   refresh: [["path", { d: "M20 11a8 8 0 0 0-14-4L4 9M4 4v5h5M4 13a8 8 0 0 0 14 4l2-2M20 20v-5h-5" }]],
 };
 
