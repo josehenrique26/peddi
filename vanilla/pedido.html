@@ -1,0 +1,102 @@
+<!doctype html>
+<!-- pedido.html — Acompanhamento do pedido, com o código de entrega. Uso: pedido.html?id=PED-1011 -->
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Acompanhamento · Peddi</title>
+    <link rel="icon" href="/img/logo.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <a class="sr" href="#main">Ir para o conteúdo</a>
+    <div class="demo" id="demo" role="region" aria-label="Controles de demonstração"></div>
+    <header class="shop-top" id="topo"></header>
+
+    <main class="container shop-main" id="main">
+      <div class="narrow" id="nao-encontrado" hidden></div>
+
+      <div id="pedido" hidden>
+        <a class="btn btn-ghost btn-sm back-link" href="pedidos.html"><span data-icon="back" data-size="15"></span>Meus pedidos</a>
+
+        <!-- Aparece só logo depois de finalizar a compra (pedido.html?id=...&novo=1) -->
+        <div class="banner bn-ok" id="aviso-novo" role="status" hidden>
+          <span data-icon="checkc" data-size="20"></span>
+          <div><strong>Pedido enviado!</strong> <span data-campo="empresa-recebeu"></span> recebeu o seu pedido. Pagamento simulado: nenhuma cobrança foi feita.</div>
+        </div>
+
+        <div class="row between head-row">
+          <div>
+            <h1 id="h-pedido"></h1>
+            <p class="muted" data-campo="subtitulo"></p>
+          </div>
+          <span id="selo-estado"></span>
+        </div>
+
+        <div class="two-col">
+          <div class="stack">
+            <section class="panel" aria-label="Acompanhamento">
+              <div id="acompanhamento"></div>
+              <div class="banner bn-ok" id="aviso-entregue" hidden>
+                <span data-icon="checkc" data-size="20"></span>
+                <div data-campo="texto-entregue"></div>
+              </div>
+            </section>
+
+            <section class="codebox" id="codigo" aria-label="Código de confirmação" hidden>
+              <div>
+                <div class="small codebox-label" data-campo="codigo-rotulo"></div>
+                <div class="code" id="codigo-valor"></div>
+              </div>
+              <div class="small codebox-label codebox-note">
+                <span data-campo="codigo-nota"></span><br />Código de demonstração, não é uma medida de segurança real.
+              </div>
+            </section>
+
+            <section class="panel" aria-labelledby="h-itens">
+              <h3 id="h-itens">Itens do pedido</h3>
+              <div class="tblwrap">
+                <table class="tbl">
+                  <thead>
+                    <tr><th>Item</th><th class="right">Qtd.</th><th class="right">Unitário</th><th class="right">Total</th></tr>
+                  </thead>
+                  <tbody id="itens-pedido"></tbody>
+                </table>
+              </div>
+              <div id="totais-pedido"></div>
+            </section>
+          </div>
+
+          <div class="stack">
+            <section class="panel" aria-labelledby="h-entrega">
+              <h3 id="h-entrega">Entrega e pagamento</h3>
+              <dl class="kv">
+                <dt>Para</dt><dd data-campo="para"></dd>
+                <dt>Endereço</dt><dd data-campo="endereco"></dd>
+                <dt>Pagamento</dt><dd data-campo="pagamento"></dd>
+              </dl>
+            </section>
+
+            <section class="panel" aria-labelledby="h-historico">
+              <h3 id="h-historico">Histórico</h3>
+              <div id="historico"></div>
+            </section>
+
+            <button class="btn btn-danger" id="cancelar" type="button" hidden>Cancelar pedido</button>
+            <div class="banner bn-info" id="aviso-retirado" hidden>
+              <span data-icon="info" data-size="20"></span>
+              <div>O pedido já foi retirado pelo entregador e não pode mais ser cancelado.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <script type="module" src="/src/pages/client-tracking.js"></script>
+  </body>
+</html>
