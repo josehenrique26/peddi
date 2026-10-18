@@ -1,0 +1,103 @@
+<!doctype html>
+<!-- checkout.html — Finalização do pedido: dados, endereço (CEP via ViaCEP) e forma de pagamento. -->
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Checkout · Peddi</title>
+    <link rel="icon" href="/img/logo.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <a class="sr" href="#main">Ir para o conteúdo</a>
+    <div class="demo" id="demo" role="region" aria-label="Controles de demonstração"></div>
+    <header class="shop-top" id="topo"></header>
+
+    <main class="container shop-main" id="main">
+      <div class="narrow" id="checkout-vazio" hidden></div>
+
+      <div id="checkout" hidden>
+        <a class="btn btn-ghost btn-sm back-link" href="carrinho.html"><span data-icon="back" data-size="15"></span>Voltar ao carrinho</a>
+        <h1 class="page-title">Finalizar pedido</h1>
+
+        <form id="form-checkout" novalidate>
+          <div class="two-col">
+            <div class="stack">
+              <section class="panel" aria-labelledby="h-dados">
+                <h3 id="h-dados">Seus dados</h3>
+                <div class="two">
+                  <div class="field">
+                    <label for="f-name">Nome<span class="req" aria-hidden="true"> *</span></label>
+                    <input id="f-name" name="name" type="text" autocomplete="name" aria-required="true" aria-describedby="e-name" />
+                    <p class="err" id="e-name" role="alert"></p>
+                  </div>
+                  <div class="field">
+                    <label for="f-phone">Telefone<span class="req" aria-hidden="true"> *</span></label>
+                    <input id="f-phone" name="phone" type="tel" autocomplete="tel" placeholder="(83) 90000-0000" aria-required="true" aria-describedby="e-phone" />
+                    <p class="err" id="e-phone" role="alert"></p>
+                  </div>
+                </div>
+              </section>
+
+              <section class="panel" aria-labelledby="h-endereco">
+                <h3 id="h-endereco">Endereço de entrega</h3>
+                <div class="field">
+                  <label for="f-cep">CEP</label>
+                  <div class="cep-row">
+                    <input id="f-cep" name="cep" type="text" inputmode="numeric" autocomplete="postal-code" placeholder="58000-000" aria-describedby="h-cep e-cep" />
+                    <button class="btn btn-ghost" id="buscar-cep" type="button">Buscar CEP</button>
+                  </div>
+                  <p class="hint" id="h-cep">Opcional. Preenche rua e bairro automaticamente.</p>
+                  <p class="err" id="e-cep" role="alert"></p>
+                </div>
+                <div class="field">
+                  <label for="f-street">Rua e número<span class="req" aria-hidden="true"> *</span></label>
+                  <input id="f-street" name="street" type="text" autocomplete="street-address" aria-required="true" aria-describedby="e-street" />
+                  <p class="err" id="e-street" role="alert"></p>
+                </div>
+                <div class="two">
+                  <div class="field">
+                    <label for="f-district">Bairro<span class="req" aria-hidden="true"> *</span></label>
+                    <input id="f-district" name="district" type="text" aria-required="true" aria-describedby="e-district" />
+                    <p class="err" id="e-district" role="alert"></p>
+                  </div>
+                  <div class="field">
+                    <label for="f-complement">Complemento</label>
+                    <input id="f-complement" name="complement" type="text" placeholder="Apto, bloco, referência" />
+                  </div>
+                </div>
+              </section>
+
+              <section class="panel" aria-labelledby="h-pagamento">
+                <h3 id="h-pagamento">Forma de pagamento</h3>
+                <p class="muted small">Pagamento simulado: nenhuma cobrança real é feita.</p>
+                <!-- Uma opção por forma de pagamento, criada pelo JS -->
+                <div class="radio-cards" id="pagamentos" role="radiogroup" aria-label="Forma de pagamento"></div>
+              </section>
+            </div>
+
+            <aside class="panel sticky-side" aria-labelledby="h-resumo">
+              <h3 id="h-resumo">Resumo do pedido</h3>
+              <ul class="summary-list" id="resumo-itens"></ul>
+              <div id="resumo-totais"></div>
+              <div class="banner bn-err" id="aviso-indisponivel" role="alert" hidden>
+                <span data-icon="alert" data-size="20"></span>
+                <div>Há itens indisponíveis. Volte ao carrinho e remova-os.</div>
+              </div>
+              <p class="err" id="e-form" role="alert"></p>
+              <button class="btn btn-primary btn-lg btn-block" id="confirmar" type="submit">Confirmar pedido</button>
+              <p class="muted small center">Pagamento simulado · sem cobrança real</p>
+            </aside>
+          </div>
+        </form>
+      </div>
+    </main>
+
+    <script type="module" src="/src/pages/client-checkout.js"></script>
+  </body>
+</html>
