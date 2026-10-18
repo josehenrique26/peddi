@@ -1,0 +1,77 @@
+<!doctype html>
+<!-- loja.html — Cardápio da empresa (RF-CLI: listagem, busca, filtro por categoria e carrinho). Uso: loja.html?empresa=forno-da-vila -->
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Cardápio · Peddi</title>
+    <link rel="icon" href="/img/logo.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <a class="sr" href="#main">Ir para o conteúdo</a>
+    <div class="demo" id="demo" role="region" aria-label="Controles de demonstração"></div>
+    <header class="shop-top" id="topo"></header>
+
+    <main class="container shop-main" id="main">
+      <!-- Empresa inexistente ou inativa: o JS preenche e mostra este bloco -->
+      <div class="narrow" id="indisponivel" hidden></div>
+
+      <div id="loja" hidden>
+        <section class="shop-hero" aria-labelledby="h-loja">
+          <div class="row hero-row">
+            <div class="brandmark" id="marca" aria-hidden="true"></div>
+            <div class="grow">
+              <h1 id="h-loja"></h1>
+              <p class="muted lead-sm" id="descricao"></p>
+              <div class="facts">
+                <span><span data-icon="store" data-size="16"></span><span data-campo="categoria"></span></span>
+                <span><span data-icon="pin" data-size="16"></span><span data-campo="endereco"></span></span>
+                <span><span data-icon="bike" data-size="16"></span>Entrega fixa <span data-campo="taxa"></span></span>
+                <span class="badge b-green"><span data-icon="check" data-size="13"></span>Aceitando pedidos</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Aviso fixo: o JS só mostra ou esconde (atributo hidden) -->
+        <div class="banner bn-warn" id="aviso-carrinho" role="status" hidden>
+          <span data-icon="alert" data-size="20"></span>
+          <div>
+            Você tem um carrinho aberto em <strong id="empresa-do-carrinho"></strong>. Cada pedido pode ter produtos de uma única empresa.
+            <a href="carrinho.html">Ver carrinho</a>
+          </div>
+        </div>
+
+        <div class="menu-tools">
+          <div class="toolbar">
+            <div class="sbox">
+              <label class="sr" for="busca">Buscar no cardápio</label>
+              <span data-icon="search" data-size="18"></span>
+              <input id="busca" type="search" placeholder="Buscar no cardápio" autocomplete="off" />
+            </div>
+          </div>
+          <!-- Os botões de categoria são criados pelo JS -->
+          <div class="chips" id="categorias" role="group" aria-label="Categorias"></div>
+        </div>
+
+        <!-- Seções por categoria, criadas pelo JS -->
+        <div id="cardapio"></div>
+      </div>
+    </main>
+
+    <div class="cartbar" id="barra-carrinho" hidden>
+      <a href="carrinho.html">
+        <span><span data-icon="cart" data-size="18"></span> <span data-campo="barra-texto"></span></span>
+        <span data-campo="barra-total"></span>
+      </a>
+    </div>
+
+    <script type="module" src="/src/pages/client-menu.js"></script>
+  </body>
+</html>
