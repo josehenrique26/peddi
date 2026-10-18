@@ -1,0 +1,51 @@
+<!doctype html>
+<!-- carrinho.html — Carrinho do cliente (quantidades, observação por item e total). -->
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Carrinho · Peddi</title>
+    <link rel="icon" href="/img/logo.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <a class="sr" href="#main">Ir para o conteúdo</a>
+    <div class="demo" id="demo" role="region" aria-label="Controles de demonstração"></div>
+    <header class="shop-top" id="topo"></header>
+
+    <main class="container shop-main" id="main">
+      <div class="narrow" id="carrinho-vazio" hidden></div>
+
+      <div id="carrinho-cheio" hidden>
+        <h1 class="page-title">Seu carrinho</h1>
+        <div class="two-col">
+          <section class="panel" aria-label="Itens do carrinho">
+            <!-- Uma linha por item, criada pelo JS -->
+            <div class="lines" id="itens"></div>
+            <div class="row actions-row">
+              <a class="btn btn-ghost btn-sm" id="continuar" href="index.html"><span data-icon="plus" data-size="15"></span>Continuar comprando</a>
+              <button class="btn btn-ghost btn-sm" id="limpar" type="button"><span data-icon="trash" data-size="15"></span>Limpar carrinho</button>
+            </div>
+          </section>
+
+          <aside class="panel sticky-side" aria-label="Resumo">
+            <h3>Resumo</h3>
+            <div id="resumo"></div>
+            <div class="banner bn-err" id="aviso-indisponivel" role="alert" hidden>
+              <span data-icon="alert" data-size="20"></span>
+              <div>Remova os itens indisponíveis para seguir.</div>
+            </div>
+            <a class="btn btn-primary btn-lg btn-block" id="ir-checkout" href="checkout.html">Ir para o checkout</a>
+          </aside>
+        </div>
+      </div>
+    </main>
+
+    <script type="module" src="/src/pages/client-cart.js"></script>
+  </body>
+</html>
