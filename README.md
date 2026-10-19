@@ -203,7 +203,7 @@ O backlog completo (requisitos funcionais e não funcionais, com critérios de a
 - [ ] CRUD de produtos e categorias pelo estabelecimento (LocalStorage ou `json-server`)
 - [ ] Criação de pedidos, acompanhamento e alteração de status ao longo do fluxo
 - [ ] Seleção de até 3 pedidos por viagem, com reserva sem duplicidade
-- [ ] Código de entrega de 4 dígitos, confirmação e limite de tentativas
+- [ ] Código de entrega de 4 dígitos, confirmação, limite de tentativas e registro de falha na entrega
 - [ ] Painel do estabelecimento com faturamento, ticket médio e ranking (`reduce`)
 - [ ] Organização modular com ESM e uso do Vite (template vanilla)
 

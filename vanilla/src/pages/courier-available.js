@@ -8,7 +8,9 @@ import {
   salvarPedidos,
   PEDIDOS_INICIAIS,
 } from "../services/orders.js";
-import { lerSessao } from "../services/storage.js";
+import { lerSessao, gravarSessao } from "../services/storage.js";
+import { rotas, rotaDoPerfil, navegar } from "../utils/routes.js";
+import { listarEntregadores, obterEmpresa } from "../services/companies.js";
 
 const ESTILOS_ID = "peddi-courier-styles";
 
@@ -41,6 +43,9 @@ function injetarEstilos() {
     .btn-nav:hover { color: #fff; border-color: #666; }
     .btn-nav.active { background: var(--primary-color); color: #fff; border-color: var(--primary-color); }
     .topbar-right { display: flex; gap: 10px; align-items: center; }
+    .select-courier-topbar { background: #262930; color: #f2f1ee; border: 1px solid #383c45; padding: 6px 12px; border-radius: 6px; font-size: 0.85rem; cursor: pointer; outline: none; font-family: inherit; max-width: 280px; }
+    .select-courier-topbar:hover, .select-courier-topbar:focus { border-color: #666; }
+    .select-courier-topbar option { background: #1e1e24; color: #fff; }
     .container { max-width: 600px; margin: 20px auto; padding: 0 16px 140px 16px; }
     .hero-card { background-color: var(--dark-bg); color: #fff; padding: 20px; border-radius: 12px; margin-bottom: 25px; }
     .hero-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
@@ -149,38 +154,58 @@ export function renderCourierAvailable(root) {
   injetarEstilos();
 
   const sessao = lerSessao();
-  const courierId = sessao.courierId || "ct_1";
+  const entregadores = listarEntregadores();
+  const courierId = sessao.courierId || (entregadores.find((c) => c.active) ?? entregadores[0]).id;
+  const entregadorAtual = entregadores.find((c) => c.id === courierId) || entregadores[0];
+  const empresaAtual = obterEmpresa(entregadorAtual.companyId);
+  const nomeEmpresa = empresaAtual?.name ?? "Forno da Vila";
+  const nomeEntregador = entregadorAtual.name;
+  const codigoEntregador = entregadorAtual.id.toUpperCase();
+
+  const opcoesEntregadores = entregadores
+    .map((c) => {
+      const emp = obterEmpresa(c.companyId);
+      const label = `${c.name} · ${emp?.name ?? ""}${c.active ? "" : " (inativo)"}`;
+      return `<option value="${c.id}" ${c.id === entregadorAtual.id ? "selected" : ""}>${label}</option>`;
+    })
+    .join("");
+
   const pedidosProntos = listarPedidosProntos();
-  const viagemAtiva = obterViagemAtual();
+  const viagemAtiva = obterViagemAtual(courierId);
 
   root.innerHTML = `
-    <!-- Container para avisos flutuantes (RF-ENT-02, RF-ENT-03 e RF-ENT-04) -->
+    <!-- Container para avisos flutuantes (RF-ENT-02, RF-ENT-03, RF-ENT-04 e RF-ENT-08) -->
     <div id="container-aviso" style="display: none;"></div>
 
     <header class="topbar">
       <div class="topbar-left">
-        <a href="#/" class="logo-icon-small">P</a>
+        <a href="${rotas.inicio()}" class="logo-icon-small" title="Página Inicial">P</a>
         <span><b>Peddi</b> Modo demonstração: troca de perfil</span>
       </div>
       <nav class="topbar-nav">
-        <a href="#/admin/orders" class="btn-nav">Estabelecimento</a>
-        <a href="#/menu" class="btn-nav">Cliente</a>
-        <a href="#/courier/available" class="btn-nav active">Entregador</a>
+        <a href="${rotas.admin()}" class="btn-nav" data-perfil="admin">Estabelecimento</a>
+        <a href="${rotas.pedidos()}" class="btn-nav" data-perfil="cliente">Cliente</a>
+        <a href="${rotas.entregador()}" class="btn-nav active" data-perfil="entregador">Entregador</a>
       </nav>
       <div class="topbar-right">
-        <span class="btn-nav" style="border:none; cursor:default;">Rafael Mota · Forno da Vila</span>
+        <select id="select-entregador-topbar" class="select-courier-topbar" aria-label="Entregador em demonstração">
+          ${opcoesEntregadores}
+        </select>
       </div>
     </header>
 
     <main class="container">
-      <!-- RF-ENT-04: Critério 5 - Se houver viagem ativa, exibe banner para retomar imediatamente -->
+      <!-- RF-ENT-04 & RF-ENT-08: Se houver viagem ativa, exibe banner com bloqueio explícito -->
       ${
         viagemAtiva
           ? `
         <div class="banner-viagem-ativa">
           <div>
             <b>🛵 Você possui uma viagem em andamento!</b>
-            <small>${viagemAtiva.pedidos.length} pedidos em rota de entrega</small>
+            <small>${viagemAtiva.pedidos.length} pedido(s) em rota de entrega · Início de nova viagem bloqueado</small>
+            <div style="background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; padding: 4px 8px; border-radius: 4px; font-size: 0.78rem; font-weight: 700; margin-top: 6px; display: inline-flex; align-items: center; gap: 4px;">
+              🔒 Iniciar nova viagem fica bloqueado com aviso até a conclusão da atual (RF-ENT-08)
+            </div>
           </div>
           <a href="#/courier/trip" class="btn-retomar">Ver viagem atual →</a>
         </div>
@@ -193,12 +218,14 @@ export function renderCourierAvailable(root) {
           <div class="hero-brand">
             <span class="logo-icon-small">P</span> Peddi Entregas
           </div>
-          <span class="status-badge">Ativo</span>
+          <span class="status-badge" style="${entregadorAtual.active ? '' : 'background: #fee2e2; color: #b91c1c;'}">
+            ${entregadorAtual.active ? "Ativo" : "Inativo"}
+          </span>
         </div>
         <div class="hero-body">
           <p>Vinculado a</p>
-          <h2>Forno da Vila</h2>
-          <p>Rafael Mota · E-00017</p>
+          <h2>${nomeEmpresa}</h2>
+          <p>${nomeEntregador} · ${codigoEntregador}</p>
         </div>
       </div>
 
@@ -226,28 +253,53 @@ export function renderCourierAvailable(root) {
       </div>
     </main>
 
-    <!-- RF-ENT-02: Barra de ação fixa inferior com contador e botão de iniciar -->
+    <!-- RF-ENT-02 & RF-ENT-08: Barra de ação fixa inferior com bloqueio se houver viagem ativa -->
     <div id="dock-inferior" class="fixed-bottom" style="${pedidosProntos.length === 0 ? "display: none;" : ""}">
       <div class="action-bar">
-        <span class="action-bar-counter">
-          <b id="contador-selecionados">0</b> de 3 selecionados
-        </span>
-        <div class="action-buttons">
-          <button id="btn-limpar" class="btn-clear" type="button">Limpar</button>
-          <button id="btn-iniciar" class="btn-start-trip" type="button" disabled>
-            Iniciar viagem 🛵
-          </button>
-        </div>
+        ${
+          viagemAtiva
+            ? `
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 1.3rem;">🔒</span>
+            <div>
+              <b style="color: #fed7aa; font-size: 0.95rem; display: block;">Iniciar viagem bloqueado</b>
+              <small style="color: #cbd5e1; font-size: 0.8rem;">Viagem em andamento (${viagemAtiva.pedidos.length} paradas)</small>
+            </div>
+          </div>
+          <div class="action-buttons">
+            <button id="btn-iniciar" class="btn-start-trip" type="button" disabled title="Bloqueado: conclua sua viagem em andamento" style="opacity: 0.5; cursor: not-allowed;">
+              Iniciar viagem 🔒
+            </button>
+            <a href="#/courier/trip" class="btn-retomar" style="font-size: 0.85rem; padding: 8px 14px;">
+              Ver viagem atual →
+            </a>
+          </div>
+        `
+            : `
+          <span class="action-bar-counter">
+            <b id="contador-selecionados">0</b> de 3 selecionados
+          </span>
+          <div class="action-buttons">
+            <button id="btn-limpar" class="btn-clear" type="button">Limpar</button>
+            <button id="btn-iniciar" class="btn-start-trip" type="button" disabled>
+              Iniciar viagem 🛵
+            </button>
+          </div>
+        `
+        }
       </div>
     </div>
   `;
 
   // Configurar interatividade de seleção e trava atômica (RF-ENT-02, RF-ENT-03 e RF-ENT-04)
-  configurarSelecaoEConcorrencia(courierId);
+  configurarSelecaoEConcorrencia(courierId, root);
 }
 
-function configurarSelecaoEConcorrencia(courierId) {
+function configurarSelecaoEConcorrencia(courierId, root) {
   const selecionados = new Set();
+  const viagemAtiva = obterViagemAtual(courierId);
+  const temViagemAtiva = Boolean(viagemAtiva);
+
   const contadorEl = document.getElementById("contador-selecionados");
   const btnIniciar = document.getElementById("btn-iniciar");
   const btnLimpar = document.getElementById("btn-limpar");
@@ -277,30 +329,48 @@ function configurarSelecaoEConcorrencia(courierId) {
     }, 4500);
   }
 
+  function toggleSelecao(id, checkbox) {
+    // RF-ENT-08 (Critério 1): Com viagem em andamento, seleção de pedidos é bloqueada com aviso
+    if (temViagemAtiva) {
+      if (checkbox) {
+        checkbox.checked = false;
+      }
+      mostrarAviso("Bloqueado: você já possui uma viagem em andamento. Conclua todas as entregas atuais antes de iniciar uma nova viagem!", "erro");
+      return;
+    }
+
+    if (selecionados.has(id)) {
+      selecionados.delete(id);
+    } else {
+      // RF-ENT-02: Limite máximo de 3 pedidos
+      if (selecionados.size >= 3) {
+        if (checkbox) {
+          checkbox.checked = false;
+        }
+        mostrarAviso("Limite atingido: você só pode selecionar até 3 pedidos por viagem!");
+        return;
+      }
+      selecionados.add(id);
+    }
+
+    atualizarInterface();
+  }
+
   function vincularEventosCards() {
     const cards = listaPedidosEl.querySelectorAll(".order-card");
     cards.forEach((card) => {
       const id = card.getAttribute("data-id");
       const checkbox = card.querySelector('input[type="checkbox"]');
 
-      card.addEventListener("click", (event) => {
-        const clicouDiretamenteNoCheckbox = event.target === checkbox;
+      if (checkbox) {
+        checkbox.addEventListener("click", (event) => {
+          event.stopPropagation();
+          toggleSelecao(id, checkbox);
+        });
+      }
 
-        if (selecionados.has(id)) {
-          selecionados.delete(id);
-        } else {
-          // RF-ENT-02: Limite máximo de 3 pedidos
-          if (selecionados.size >= 3) {
-            if (clicouDiretamenteNoCheckbox) {
-              checkbox.checked = false;
-            }
-            mostrarAviso("Limite atingido: você só pode selecionar até 3 pedidos por viagem!");
-            return;
-          }
-          selecionados.add(id);
-        }
-
-        atualizarInterface();
+      card.addEventListener("click", () => {
+        toggleSelecao(id, checkbox);
       });
     });
   }
@@ -329,7 +399,7 @@ function configurarSelecaoEConcorrencia(courierId) {
     }
 
     if (btnIniciar) {
-      btnIniciar.disabled = total === 0;
+      btnIniciar.disabled = temViagemAtiva || total === 0;
     }
 
     const cards = listaPedidosEl.querySelectorAll(".order-card");
@@ -349,17 +419,28 @@ function configurarSelecaoEConcorrencia(courierId) {
     localStorage.setItem("peddi_pedidos_selecionados", JSON.stringify(Array.from(selecionados)));
   }
 
-  // RF-ENT-03 e RF-ENT-04: Botão Iniciar viagem com trava atômica e criação da viagem ativa
+  // RF-ENT-03, RF-ENT-04 e RF-ENT-08: Botão Iniciar viagem com trava atômica e bloqueio de viagem simultânea
   if (btnIniciar) {
     btnIniciar.addEventListener("click", () => {
+      // RF-ENT-08 (Critério 1): Com viagem em andamento, Iniciar viagem fica bloqueado com aviso
+      if (temViagemAtiva) {
+        mostrarAviso("Iniciar viagem bloqueado: você já possui uma viagem em andamento. Conclua todas as entregas atuais primeiro!", "erro");
+        return;
+      }
+
       if (selecionados.size === 0) return;
 
       const idsParaIniciar = Array.from(selecionados);
 
-      // RF-ENT-04 Critério 1 e 2: Inicia a viagem, gera códigos de 4 dígitos e muda status para 'Saiu para entrega'
+      // RF-ENT-04 & RF-ENT-08: Inicia a viagem, gera códigos de 4 dígitos e muda status para 'Saiu para entrega'
       const resultado = iniciarViagem(idsParaIniciar, courierId);
 
       if (!resultado.sucesso) {
+        if (resultado.motivo === "viagem_em_andamento") {
+          mostrarAviso(`Bloqueado: ${resultado.erro}`, "erro");
+          return;
+        }
+
         // RF-ENT-03 Critério 2: Se outro pegou, aparece aviso e o pedido sai da seleção
         const ocupados = resultado.ocupados || [];
         const plural = ocupados.length > 1;
@@ -425,6 +506,39 @@ function configurarSelecaoEConcorrencia(courierId) {
   window.addEventListener("storage", (e) => {
     if (e.key === "peddi_pedidos") {
       atualizarListaPedidos();
+    }
+    if (e.key === "peddi_viagem_atual") {
+      renderCourierAvailable(root);
+    }
+  });
+
+  window.addEventListener("peddi_viagem_encerrada", () => {
+    renderCourierAvailable(root);
+  });
+
+  // Troca de perfil via topbar
+  root.querySelectorAll("[data-perfil]").forEach((el) => {
+    el.addEventListener("click", (e) => {
+      e.preventDefault();
+      const perfil = el.dataset.perfil;
+      gravarSessao({ ...lerSessao(), role: perfil });
+      navegar(rotaDoPerfil[perfil]());
+    });
+  });
+
+  // Troca de entregador via select da topbar
+  const seletorEntregador = root.querySelector("#select-entregador-topbar");
+  if (seletorEntregador) {
+    seletorEntregador.addEventListener("change", (e) => {
+      gravarSessao({ ...lerSessao(), courierId: e.target.value });
+      location.reload();
+    });
+  }
+
+  // Sincroniza se a sessão mudar em outra aba
+  window.addEventListener("storage", (e) => {
+    if (e.key === "peddi.v1.session") {
+      location.reload();
     }
   });
 
