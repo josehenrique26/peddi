@@ -1,0 +1,227 @@
+<!doctype html>
+<!-- admin-config.html — Configurações da empresa. Os campos estão aqui; src/pages/admin-config.js preenche os valores e valida. -->
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>Configurações · Peddi</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="icon" href="/img/logo.svg" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/src/styles/main.css" />
+    <link rel="stylesheet" href="/src/styles/pages/admin.css" />
+    <link rel="stylesheet" href="/src/styles/pages/admin-config.css" />
+  </head>
+  <body>
+    <a class="sr" href="#main">Ir para o conteúdo</a>
+    <div
+      class="demo"
+      id="demo"
+      role="region"
+      aria-label="Controles de demonstração"
+    ></div>
+
+    <div class="adm">
+      <!-- Menu lateral: preenchido por src/components/admin-shell.js -->
+      <aside
+        class="side"
+        id="menu-lateral"
+        aria-label="Navegação do estabelecimento"
+      ></aside>
+      <div class="scrim" id="scrim"></div>
+
+      <div class="adm-main" id="main">
+        <div class="adm-top">
+          <button
+            class="icon-btn burger"
+            id="abrir-menu"
+            type="button"
+            aria-label="Abrir menu"
+            aria-expanded="false"
+          >
+            <span data-icon="menu" data-size="20"></span>
+          </button>
+          <h1 class="grow">Configurações</h1>
+        </div>
+
+        <form id="form-config" class="stack config-form" novalidate>
+          <!-- Dados do estabelecimento -->
+          <section class="panel" aria-labelledby="h-dados">
+            <h3 id="h-dados">Dados do estabelecimento</h3>
+            <div class="two">
+              <div class="field">
+                <label for="f-name"
+                  >Nome<span class="req" aria-hidden="true"> *</span></label
+                >
+                <input
+                  id="f-name"
+                  name="name"
+                  type="text"
+                  aria-required="true"
+                  aria-describedby="e-name"
+                />
+                <p class="err" id="e-name" role="alert"></p>
+              </div>
+              <div class="field">
+                <label for="f-category">Categoria do negócio</label>
+                <!-- As <option> são criadas pelo JS -->
+                <select id="f-category" name="category"></select>
+              </div>
+            </div>
+            <div class="field">
+              <label for="f-address"
+                >Endereço<span class="req" aria-hidden="true"> *</span></label
+              >
+              <input
+                id="f-address"
+                name="address"
+                type="text"
+                autocomplete="street-address"
+                aria-required="true"
+                aria-describedby="e-address"
+              />
+              <p class="err" id="e-address" role="alert"></p>
+            </div>
+            <div class="field">
+              <label for="f-description">Descrição breve</label>
+              <textarea
+                id="f-description"
+                name="description"
+                maxlength="160"
+                aria-describedby="h-description"
+              ></textarea>
+              <p class="hint" id="h-description">
+                Aparece no topo do cardápio do cliente.
+              </p>
+            </div>
+          </section>
+
+          <!-- Acesso do cliente -->
+          <section class="panel" aria-labelledby="h-acesso">
+            <h3 id="h-acesso">Acesso do cliente</h3>
+            <div class="two">
+              <div class="field">
+                <label for="f-slug"
+                  >Identificador do link<span class="req" aria-hidden="true">
+                    *</span
+                  ></label
+                >
+                <input
+                  id="f-slug"
+                  name="slug"
+                  type="text"
+                  autocapitalize="none"
+                  aria-required="true"
+                  aria-describedby="h-slug e-slug"
+                />
+                <p class="hint" id="h-slug">
+                  Só letras minúsculas, números e hífen.
+                </p>
+                <p class="err" id="e-slug" role="alert"></p>
+              </div>
+              <div class="field">
+                <label for="f-code"
+                  >Código de acesso<span class="req" aria-hidden="true">
+                    *</span
+                  ></label
+                >
+                <input
+                  id="f-code"
+                  name="code"
+                  type="text"
+                  autocapitalize="characters"
+                  aria-required="true"
+                  aria-describedby="h-code e-code"
+                />
+                <p class="hint" id="h-code">4 a 10 letras ou números.</p>
+                <p class="err" id="e-code" role="alert"></p>
+              </div>
+            </div>
+            <div class="banner bn-info">
+              <span data-icon="route" data-size="20"></span>
+              <div>
+                Link do cliente: <strong id="link-cliente"></strong> (endereço
+                ilustrativo).
+                <button type="button" class="linkish" id="copiar-link">
+                  Copiar link</button
+                >
+                · <a id="abrir-cardapio" href="loja.html">Abrir cardápio</a>
+              </div>
+            </div>
+          </section>
+
+          <!-- Entrega e situação -->
+          <section class="panel" aria-labelledby="h-entrega">
+            <h3 id="h-entrega">Entrega e situação</h3>
+            <div class="field">
+              <label for="f-fee"
+                >Taxa fixa de entrega (R$)<span class="req" aria-hidden="true">
+                  *</span
+                ></label
+              >
+              <input
+                id="f-fee"
+                name="fee"
+                type="text"
+                inputmode="decimal"
+                aria-required="true"
+                aria-describedby="h-fee e-fee"
+              />
+              <p class="hint" id="h-fee">
+                Vale só para novos pedidos. Pedidos anteriores mantêm a taxa da
+                época.
+              </p>
+              <p class="err" id="e-fee" role="alert"></p>
+            </div>
+            <label class="rc">
+              <input type="checkbox" name="active" />
+              <span
+                ><strong>Empresa ativa</strong><br /><span class="muted small"
+                  >Inativa, a empresa não aceita novos pedidos.</span
+                ></span
+              >
+            </label>
+          </section>
+
+          <!-- Identidade visual -->
+          <section class="panel" aria-labelledby="h-marca">
+            <h3 id="h-marca">Identidade visual no cardápio</h3>
+            <div class="marca-previa">
+              <span class="marca" id="previa-marca" aria-hidden="true"></span>
+              <div>
+                <strong id="previa-nome"></strong>
+                <div class="muted small">Prévia da marca no cardápio</div>
+              </div>
+            </div>
+            <fieldset class="field">
+              <legend class="lbl">Cor da marca</legend>
+              <!-- Uma opção por cor, criada pelo JS -->
+              <div class="cores" id="cores" role="radiogroup" aria-label="Cor da marca"></div>
+            </fieldset>
+            <fieldset class="field">
+              <legend class="lbl">Ícone</legend>
+              <!-- Uma opção por ícone, criada pelo JS -->
+              <div class="emoji-grid" id="icones" role="radiogroup" aria-label="Ícone da marca"></div>
+            </fieldset>
+          </section>
+
+          <div class="row">
+            <button class="btn btn-primary btn-lg" type="submit">
+              Salvar configurações
+            </button>
+            <p class="err" id="e-form" role="alert"></p>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script type="module" src="/src/pages/admin-config.js"></script>
+  </body>
+</html>

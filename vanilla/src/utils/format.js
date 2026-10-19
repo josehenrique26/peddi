@@ -7,6 +7,17 @@ export const hora = (ts) => { const d = new Date(ts); return `${dois(d.getHours(
 export const dataCurta = (ts) => { const d = new Date(ts); return `${dois(d.getDate())}/${dois(d.getMonth() + 1)}`; };
 export const plural = (n, singular, pluralTxt) => (n === 1 ? singular : pluralTxt);
 
+// Texto digitado em reais -> centavos. "6,50" -> 650 · "1.250,00" -> 125000 · vazio ou inválido -> NaN
+export function lerPreco(texto) {
+  const limpo = String(texto ?? "").replace(/[R$\s]/g, "");
+  if (!limpo) return NaN;
+  const numero = limpo.includes(",") ? limpo.replace(/\./g, "").replace(",", ".") : limpo;
+  return /^\d+(\.\d{1,2})?$/.test(numero) ? Math.round(parseFloat(numero) * 100) : NaN;
+}
+
+// Centavos -> texto para o campo do formulário. 650 -> "6,50"
+export const precoParaCampo = (centavos) => (centavos / 100).toFixed(2).replace(".", ",");
+
 // "agora", "há 12 min", "hoje, 14:05", "ontem, 21:40" ou "03/10, 19:30".
 export function quando(ts) {
   const min = Math.floor((Date.now() - ts) / 60000);

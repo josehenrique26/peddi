@@ -766,3 +766,55 @@ textarea:focus {
     animation: none !important;
   }
 }
+
+/* Avisos (toast) e janela de confirmação: componentes usados por todas as telas (cliente, empresa e entregador). */
+.toasts {
+  position: fixed;
+  left: 50%;
+  top: calc(var(--safe-top) + 62px);
+  transform: translateX(-50%);
+  z-index: 300;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(460px, calc(100% - 24px));
+  pointer-events: none;
+}
+.toast {
+  pointer-events: auto;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--graphite-line);
+  border-left: 5px solid var(--green-ink);
+  background: var(--graphite);
+  color: var(--on-graphite);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.28);
+  animation: toast-in 0.18s ease-out;
+}
+.toast.err { border-left-color: #e5484d; }
+.toast.info { border-left-color: #4c82f7; }
+@keyframes toast-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+
+dialog.modal {
+  width: min(520px, calc(100% - 32px));
+  max-height: calc(100dvh - 32px);
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--ink);
+  overflow: hidden;
+}
+dialog.modal[open] { display: flex; flex-direction: column; }
+dialog.modal::backdrop { background: rgba(12, 13, 16, 0.6); }
+.modal form { display: flex; flex-direction: column; min-height: 0; flex: 1; }
+.m-hd { padding: 18px 20px 12px; border-bottom: 1px solid var(--line-2); }
+.m-bd { padding: 16px 20px; overflow-y: auto; flex: 1; min-height: 0; }
+.m-bd .field { margin-top: 14px; }
+.m-ft { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 10px; padding: 12px 20px calc(14px + var(--safe-bottom)); border-top: 1px solid var(--line-2); }
+@media (max-width: 640px) {
+  dialog.modal { width: 100%; max-width: 100%; margin: auto 0 0; border-radius: 16px 16px 0 0; }
+}
