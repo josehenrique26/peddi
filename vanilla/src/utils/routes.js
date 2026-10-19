@@ -8,6 +8,9 @@ export const rotas = {
   checkout: () => "checkout.html",
   pedido: (id, recemCriado = false) => `pedido.html?id=${encodeURIComponent(id)}${recemCriado ? "&novo=1" : ""}`,
   entregador: () => "entregador.html",
+  entregadorViagens: () => "entregador-viagens.html",
+  entregadorViagem: (id) => `entregador-viagem.html?id=${encodeURIComponent(id)}`,
+  entregadorHistorico: () => "entregador-historico.html",
 };
 
 export const rotaDoPerfil = {

@@ -1,10 +1,21 @@
 // src/components/demo-bar.js — barra de demonstração (troca de perfil, tema, reiniciar dados).
 import { marcaLogo } from "./logo.js";
-import { alternarTema } from "../utils/theme.js";
+import { montarIcones, icone } from "./icon.js";
+import { alternarTema, obterTemaAtual } from "../utils/theme.js";
 import { preencherSelect } from "../utils/select.js";
 import { rotas, rotaDoPerfil, navegar } from "../utils/routes.js";
-import { armazenamentoOk, lerSessao, gravarSessao, reiniciarDados } from "../services/storage.js";
-import { listarEmpresas, listarClientes, listarEntregadores, obterEmpresa } from "../services/companies.js";
+import {
+  armazenamentoOk,
+  lerSessao,
+  gravarSessao,
+  reiniciarDados,
+} from "../services/storage.js";
+import {
+  listarEmpresas,
+  listarClientes,
+  listarEntregadores,
+  obterEmpresa,
+} from "../services/companies.js";
 
 const PERFIS = [
   ["admin", "Estabelecimento", "store"],
@@ -15,9 +26,27 @@ const PERFIS = [
 // Para cada perfil: qual campo da sessão guarda a escolha, o rótulo do select e as opções.
 function configDoSeletor(perfil) {
   return {
-    admin: ["companyId", "Empresa em demonstração", listarEmpresas().map((c) => [c.id, c.name + (c.active ? "" : " (inativa)")])],
-    cliente: ["customerId", "Cliente em demonstração", listarClientes().map((c) => [c.id, c.name])],
-    entregador: ["courierId", "Entregador em demonstração", listarEntregadores().map((c) => [c.id, `${c.name} · ${obterEmpresa(c.companyId)?.name ?? ""}${c.active ? "" : " (inativo)"}`])],
+    admin: [
+      "companyId",
+      "Empresa em demonstração",
+      listarEmpresas().map((c) => [
+        c.id,
+        c.name + (c.active ? "" : " (inativa)"),
+      ]),
+    ],
+    cliente: [
+      "customerId",
+      "Cliente em demonstração",
+      listarClientes().map((c) => [c.id, c.name]),
+    ],
+    entregador: [
+      "courierId",
+      "Entregador em demonstração",
+      listarEntregadores().map((c) => [
+        c.id,
+        `${c.name} · ${obterEmpresa(c.companyId)?.name ?? ""}${c.active ? "" : " (inativo)"}`,
+      ]),
+    ],
   }[perfil];
 }
 
@@ -27,15 +56,24 @@ export function montarBarraDemo(container, { inicio = false } = {}) {
   const sessao = lerSessao();
   const perfilAtivo = inicio ? null : sessao.role;
   const config = configDoSeletor(perfilAtivo);
+  const temaAtual = obterTemaAtual();
+  const iconeTema = temaAtual === "dark" ? "sun" : "moon";
+  const rotuloTema = temaAtual === "dark" ? "Claro" : "Escuro";
 
-  const botoesPerfil = PERFIS.map(([perfil, rotulo, nomeIcone]) => `
+  const botoesPerfil = PERFIS.map(
+    ([perfil, rotulo, nomeIcone]) => `
     <button type="button" aria-pressed="${perfilAtivo === perfil}" data-perfil="${perfil}">
       <span data-icon="${nomeIcone}" data-size="16"></span> ${rotulo}
-    </button>`).join("");
+    </button>`,
+  ).join("");
 
   // O <select> nasce vazio; as <option> são criadas com createElement logo abaixo.
-  const seletorHTML = config ? `<select id="demo-seletor" aria-label="${config[1]}"></select>` : "";
-  const aviso = armazenamentoOk ? "" : `<span class="badge b-amber">Armazenamento do navegador indisponível: dados não serão mantidos</span>`;
+  const seletorHTML = config
+    ? `<select id="demo-seletor" aria-label="${config[1]}"></select>`
+    : "";
+  const aviso = armazenamentoOk
+    ? ""
+    : `<span class="badge b-amber">Armazenamento do navegador indisponível: dados não serão mantidos</span>`;
 
   container.innerHTML = `
     <div class="demo-in">
@@ -43,10 +81,14 @@ export function montarBarraDemo(container, { inicio = false } = {}) {
       <span class="tag">Modo demonstração: troca de perfil, sem autenticação real</span>
       <div class="seg" role="group" aria-label="Perfil de demonstração">${botoesPerfil}</div>
       ${seletorHTML}
-      <button type="button" class="dbtn" id="btn-tema"><span data-icon="moon" data-size="15"></span> Tema</button>
+      <button type="button" class="dbtn" id="btn-tema" aria-label="Alternar para modo ${rotuloTema}">
+        <span data-icon="${iconeTema}" data-size="15"></span> ${rotuloTema}
+      </button>
       <button type="button" class="dbtn" id="btn-reiniciar"><span data-icon="refresh" data-size="15"></span> Reiniciar dados</button>
       ${aviso}
     </div>`;
+
+  montarIcones(container);
 
   // Select da empresa/cliente/entregador
   const seletor = container.querySelector("#demo-seletor");
@@ -67,10 +109,23 @@ export function montarBarraDemo(container, { inicio = false } = {}) {
     });
   });
 
-  container.querySelector("#btn-tema").addEventListener("click", alternarTema);
+  const botaoTema = container.querySelector("#btn-tema");
+  botaoTema.addEventListener("click", () => {
+    alternarTema();
+    const temaNovo = obterTemaAtual();
+    const iconeNovo = temaNovo === "dark" ? "sun" : "moon";
+    const textoNovo = temaNovo === "dark" ? "Claro" : "Escuro";
+    botaoTema.innerHTML = `<span data-icon="${iconeNovo}" data-size="15"></span> ${textoNovo}`;
+    botaoTema.setAttribute("aria-label", `Alternar para modo ${textoNovo}`);
+    montarIcones(botaoTema);
+  });
 
   container.querySelector("#btn-reiniciar").addEventListener("click", () => {
-    if (confirm("Reiniciar dados de demonstração? Tudo o que foi feito neste navegador será substituído pelos dados iniciais.")) {
+    if (
+      confirm(
+        "Reiniciar dados de demonstração? Tudo o que foi feito neste navegador será substituído pelos dados iniciais.",
+      )
+    ) {
       reiniciarDados();
       location.assign(rotas.inicio());
     }

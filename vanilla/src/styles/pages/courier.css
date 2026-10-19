@@ -1,0 +1,182 @@
+/* courier.css — telas do entregador (entregador*.html). Cores, botões, selos e janelas vêm do main.css. */
+.row.between {
+  justify-content: space-between;
+}
+.row.nowrap {
+  flex-wrap: nowrap;
+}
+
+.cr {
+  max-width: 600px;
+  margin: 0 auto;
+  min-height: calc(100dvh - 50px);
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+.cr-head {
+  background: var(--graphite);
+  color: var(--on-graphite);
+  padding: 16px 18px 18px;
+  border-radius: 0 0 18px 18px;
+}
+.cr-logo {
+  font-size: 1.1rem;
+}
+.cr-sub {
+  margin-top: 14px;
+}
+.cr-muted {
+  color: var(--on-graphite-muted);
+}
+.cr-empresa {
+  font-family: var(--font-d);
+  font-size: 1.4rem;
+}
+.cr-main {
+  flex: 1;
+  padding: 16px 16px 110px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cr-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  padding-bottom: var(--safe-bottom);
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+}
+.cr-nav .in {
+  max-width: 600px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+.cr-nav a {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 62px;
+  text-decoration: none;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 650;
+  position: relative;
+}
+.cr-nav a[aria-current="page"] {
+  color: var(--orange-ink);
+}
+.cr-nav a[aria-current="page"]::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 25%;
+  right: 25%;
+  height: 3px;
+  background: var(--orange);
+  border-radius: 0 0 3px 3px;
+}
+
+.selcard {
+  display: flex;
+  gap: 12px;
+  padding: 14px;
+  border: 1.5px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  cursor: pointer;
+}
+.selcard:has(input:checked) {
+  border-color: var(--orange);
+  background: var(--orange-soft);
+}
+.selcard input {
+  width: 24px;
+  height: 24px;
+  accent-color: var(--orange);
+  flex: none;
+  margin-top: 2px;
+}
+.oid-d {
+  font-family: var(--font-d);
+  font-weight: 800;
+}
+
+.actbar {
+  position: sticky;
+  bottom: calc(72px + var(--safe-bottom));
+  z-index: 30;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--graphite);
+  color: var(--on-graphite);
+  border: 1px solid var(--graphite-line);
+}
+.tripcard {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  padding: 14px;
+}
+.tripcard:hover {
+  border-color: var(--muted);
+}
+
+/* progresso da viagem e paradas */
+.cr-prog {
+  height: 10px;
+  border-radius: 99px;
+  background: var(--line-2);
+  overflow: hidden;
+  margin: 8px 0 6px;
+}
+.cr-prog i {
+  display: block;
+  height: 100%;
+  background: var(--green-ink);
+}
+.stop.done {
+  opacity: 0.85;
+}
+.stop-n {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--graphite);
+  color: var(--on-graphite);
+  font-weight: 800;
+  font-size: 0.85rem;
+  flex: none;
+}
+.stop.atual {
+  border-color: var(--orange);
+}
+.stop .addr {
+  font-weight: 650;
+}
+.code-in {
+  font-family: var(--font-d);
+  font-weight: 800;
+  font-size: 1.6rem;
+  letter-spacing: 0.3em;
+  text-align: center;
+}
+
+@media (max-width: 640px) {
+  .cr-main {
+    padding: 14px 14px 110px;
+  }
+}

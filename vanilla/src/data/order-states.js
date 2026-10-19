@@ -10,6 +10,14 @@ export const ESTADOS = {
   cancelado: { rotulo: "Cancelado", icone: "ban", cor: "gray" },
 };
 
+// Etapas da viagem do entregador (mesmas cores dos selos do pedido).
+export const ESTADOS_VIAGEM = {
+  aguardando_retirada: { rotulo: "Aguardando retirada", icone: "clock", cor: "amber" },
+  em_andamento: { rotulo: "Em andamento", icone: "bike", cor: "orange" },
+  concluida: { rotulo: "Concluída", icone: "check", cor: "green" },
+  cancelada: { rotulo: "Desfeita", icone: "ban", cor: "gray" },
+};
+
 // Pedidos que ainda estão em andamento (valor "a receber" no dashboard).
 export const ESTADOS_EM_ANDAMENTO = ["recebido", "em_preparo", "pronto", "em_entrega"];
 

@@ -1,547 +1,128 @@
-// src/pages/courier-available.js — Pedidos 'Prontos' sem endereço completo (RF-ENT-01, RF-ENT-02, RF-ENT-03 e RF-ENT-04).
-import {
-  obterPedidos,
-  listarPedidosProntos,
-  iniciarViagem,
-  obterViagemAtual,
-  simularOutroEntregadorPegou,
-  salvarPedidos,
-  PEDIDOS_INICIAIS,
-} from "../services/orders.js";
-import { lerSessao, gravarSessao } from "../services/storage.js";
-import { rotas, rotaDoPerfil, navegar } from "../utils/routes.js";
-import { listarEntregadores, obterEmpresa } from "../services/companies.js";
+// src/pages/courier-available.js — pedidos prontos da empresa do entregador (entregador.html).
+// Antes da retirada só aparecem bairro e itens; nome, telefone e endereço completo são liberados depois.
+import { aplicarTemaSalvo } from "../utils/theme.js";
+import { exigirEntregador } from "../utils/guard.js";
+import { brl, quando, plural } from "../utils/format.js";
+import { rotas, navegar } from "../utils/routes.js";
+import { MAX_PEDIDOS_VIAGEM } from "../data/order-rules.js";
+import { carregarDados, escutarMudancas } from "../services/storage.js";
+import { obterEmpresa } from "../services/companies.js";
+import { resumoDosItens } from "../services/client-orders.js";
+import { entregadorAtual, pedidosProntos, viagemAtiva, criarViagem, ultimoEvento } from "../services/courier-orders.js";
+import { el, mount } from "../components/dom.js";
+import { icone } from "../components/icon.js";
+import { montarBarraDemo } from "../components/demo-bar.js";
+import { montarCasca, avisoDeInativo, abrirJanela, botaoFechar } from "../components/courier-shell.js";
+import { seloDeEstado } from "../components/status-badge.js";
+import { estadoVazio } from "../components/empty-state.js";
+import { avisar } from "../components/toast.js";
 
-const ESTILOS_ID = "peddi-courier-styles";
+const $ = (seletor) => document.querySelector(seletor);
 
-function injetarEstilos() {
-  if (document.getElementById(ESTILOS_ID)) return;
+const selecionados = new Set();
+let barra = {}; // contador e botões da barra de ação, atualizados sem redesenhar a lista
 
-  const style = document.createElement("style");
-  style.id = ESTILOS_ID;
-  style.innerHTML = `
-    :root {
-      --bg-color: #f7f6f2;
-      --dark-bg: #1e1e24;
-      --primary-color: #ff5a22;
-      --text-main: #1a1a1a;
-      --text-muted: #666;
-      --border-color: #e5e5e5;
-      --purple-bg: #f3e8ff;
-      --purple-text: #7e22ce;
-      --green-bg: #dcfce7;
-      --green-text: #166534;
-      --font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: var(--font-family); background-color: var(--bg-color); color: var(--text-main); }
-    .topbar { background-color: var(--dark-bg); color: #fff; display: flex; justify-content: space-between; padding: 10px 20px; font-size: 0.85rem; align-items: center; flex-wrap: wrap; gap: 10px; }
-    .topbar-left { display: flex; align-items: center; gap: 10px; }
-    .logo-icon-small { background: var(--primary-color); color: #fff; padding: 2px 6px; border-radius: 4px; font-weight: bold; text-decoration: none; }
-    .topbar-nav { display: flex; gap: 8px; }
-    .btn-nav { background: transparent; color: #aaa; border: 1px solid #444; padding: 6px 12px; border-radius: 6px; cursor: pointer; text-decoration: none; font-size: 0.85rem; }
-    .btn-nav:hover { color: #fff; border-color: #666; }
-    .btn-nav.active { background: var(--primary-color); color: #fff; border-color: var(--primary-color); }
-    .topbar-right { display: flex; gap: 10px; align-items: center; }
-    .select-courier-topbar { background: #262930; color: #f2f1ee; border: 1px solid #383c45; padding: 6px 12px; border-radius: 6px; font-size: 0.85rem; cursor: pointer; outline: none; font-family: inherit; max-width: 280px; }
-    .select-courier-topbar:hover, .select-courier-topbar:focus { border-color: #666; }
-    .select-courier-topbar option { background: #1e1e24; color: #fff; }
-    .container { max-width: 600px; margin: 20px auto; padding: 0 16px 140px 16px; }
-    .hero-card { background-color: var(--dark-bg); color: #fff; padding: 20px; border-radius: 12px; margin-bottom: 25px; }
-    .hero-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-    .hero-brand { display: flex; align-items: center; gap: 10px; font-weight: bold; font-size: 1.1rem; }
-    .status-badge { background: var(--green-bg); color: var(--green-text); padding: 4px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; }
-    .hero-body { font-size: 0.9rem; color: #aaa; }
-    .hero-body h2 { color: #fff; font-size: 1.8rem; margin: 5px 0; }
-    .section-header { margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 10px; }
-    .section-header h3 { font-size: 1.4rem; margin-bottom: 4px; color: var(--text-main); }
-    .section-header p { color: var(--text-muted); font-size: 0.9rem; }
-    .badge-count { background: #e2e8f0; color: #334155; padding: 4px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; white-space: nowrap; }
-    
-    /* Card do Pedido com estado selecionado */
-    .order-card { background: #fff; border: 1.5px solid var(--border-color); border-radius: 12px; padding: 18px; display: flex; gap: 14px; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); transition: all 0.15s ease; cursor: pointer; }
-    .order-card:hover { border-color: #cbd5e1; }
-    .order-card.selected { border-color: var(--primary-color); background-color: #fff9f6; box-shadow: 0 2px 10px rgba(255, 90, 34, 0.12); }
-    .checkbox-container input { width: 22px; height: 22px; cursor: pointer; accent-color: var(--primary-color); margin-top: 2px; }
-    .order-content { flex: 1; }
-    .order-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-    .order-id { font-weight: 700; font-size: 1rem; color: var(--text-main); }
-    .tag-pronto { background: var(--purple-bg); color: var(--purple-text); font-size: 0.75rem; padding: 4px 8px; border-radius: 6px; font-weight: 600; }
-    .order-bairro { font-size: 1rem; font-weight: 600; color: #2d3748; margin-bottom: 8px; display: flex; align-items: center; gap: 4px; }
-    .order-items { font-size: 0.88rem; color: #4a5568; margin-bottom: 10px; line-height: 1.4; }
-    .order-footer { font-size: 0.85rem; color: #718096; display: flex; justify-content: space-between; border-top: 1px solid #edf2f7; padding-top: 8px; }
-    .order-footer .price { font-weight: 700; color: var(--text-main); }
-    .empty-state { background: #fff; border: 1px dashed var(--border-color); border-radius: 12px; padding: 40px 20px; text-align: center; color: var(--text-muted); }
-    .empty-state p { font-size: 1rem; margin-top: 8px; }
-
-    /* Barra de ação inferior fixa com contador (RF-ENT-02) */
-    .fixed-bottom { position: fixed; bottom: 0; left: 0; width: 100%; display: flex; flex-direction: column; align-items: center; pointer-events: none; z-index: 100; }
-    .action-bar { background: var(--dark-bg); color: #fff; padding: 14px 20px; border-radius: 12px; width: calc(100% - 32px); max-width: 560px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; pointer-events: auto; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25); }
-    .action-bar-counter { font-size: 0.95rem; color: #cbd5e1; }
-    .action-bar-counter b { color: #fff; font-size: 1.2rem; }
-    .action-buttons { display: flex; gap: 10px; align-items: center; }
-    .btn-clear { background: transparent; color: #cbd5e1; border: 1px solid #475569; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; transition: all 0.15s ease; }
-    .btn-clear:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
-    .btn-start-trip { background: var(--primary-color); color: #fff; border: none; padding: 8px 18px; border-radius: 6px; font-weight: 700; font-size: 0.9rem; cursor: pointer; transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 6px; }
-    .btn-start-trip:hover:not(:disabled) { opacity: 0.92; transform: translateY(-1px); }
-    .btn-start-trip:disabled { opacity: 0.35; cursor: not-allowed; }
-
-    /* Avisos flutuantes (RF-ENT-02, RF-ENT-03 e RF-ENT-04) */
-    .aviso-flutuante { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); color: #fff; padding: 12px 22px; border-radius: 8px; font-weight: 600; font-size: 0.9rem; z-index: 1000; display: flex; align-items: center; gap: 10px; animation: slideDown 0.25s ease; max-width: 90%; }
-    .aviso-erro { background-color: #dc2626; box-shadow: 0 4px 16px rgba(220, 38, 38, 0.35); }
-    .aviso-sucesso { background-color: #16a34a; box-shadow: 0 4px 16px rgba(22, 163, 74, 0.35); }
-    
-    /* Aviso de viagem em andamento (RF-ENT-04) */
-    .banner-viagem-ativa { background: #ffedd5; border: 1.5px solid #fb923c; border-radius: 10px; padding: 14px 18px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-    .banner-viagem-ativa b { color: #9a3412; font-size: 0.95rem; }
-    .banner-viagem-ativa small { color: #c2410c; display: block; font-size: 0.85rem; margin-top: 2px; }
-    .btn-retomar { background: #ea580c; color: #fff; padding: 8px 14px; border-radius: 6px; font-weight: 700; text-decoration: none; font-size: 0.85rem; white-space: nowrap; }
-
-    /* Barra de simulação / testes em modo demonstração */
-    .demo-actions { margin-top: 10px; padding: 10px 14px; background: #fff; border: 1px dashed #cbd5e1; border-radius: 8px; font-size: 0.82rem; color: #64748b; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
-    .btn-test { background: #f1f5f9; border: 1px solid #cbd5e1; color: #334155; padding: 4px 10px; border-radius: 6px; font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: all 0.15s ease; }
-    .btn-test:hover { background: #e2e8f0; }
-
-    @keyframes slideDown {
-      from { opacity: 0; transform: translate(-50%, -12px); }
-      to { opacity: 1; transform: translate(-50%, 0); }
-    }
-  `;
-  document.head.appendChild(style);
+/* ---------- barra de seleção ---------- */
+function atualizarBarra() {
+  const qtd = selecionados.size;
+  barra.contador.textContent = String(qtd);
+  barra.limpar.disabled = !qtd;
+  barra.revisar.disabled = !qtd;
 }
 
-function gerarHtmlCards(pedidos) {
-  if (pedidos.length === 0) {
-    return `
-      <div class="empty-state">
-        <span style="font-size: 2rem;">📦</span>
-        <p>Nenhum pedido pronto no momento.</p>
-        <small style="color: #999;">Novos pedidos prontos aparecerão aqui automaticamente.</small>
-      </div>
-    `;
+function alternar(pedidoId, caixa) {
+  if (caixa.checked && selecionados.size >= MAX_PEDIDOS_VIAGEM) {
+    caixa.checked = false;
+    avisar(`Uma viagem aceita no máximo ${MAX_PEDIDOS_VIAGEM} pedidos.`, "err");
+    return;
   }
-
-  return pedidos
-    .map(
-      (pedido) => `
-    <div class="order-card" data-id="${pedido.id}">
-      <div class="checkbox-container">
-        <input type="checkbox" data-order-id="${pedido.id}" aria-label="Selecionar pedido ${pedido.id}" />
-      </div>
-      <div class="order-content">
-        <div class="order-top">
-          <span class="order-id">${pedido.id}</span>
-          <span class="tag-pronto">Pronto</span>
-        </div>
-        <!-- RF-ENT-01: Exibir apenas o bairro. Nome, telefone e endereço completo permanecem ocultos até o início da viagem. -->
-        <div class="order-bairro">
-          <span>📍</span>
-          <span>${pedido.bairro}</span>
-        </div>
-        <div class="order-items">${pedido.itens}</div>
-        <div class="order-footer">
-          <span class="price">${pedido.valor}</span>
-          <span>${pedido.tempo}</span>
-        </div>
-      </div>
-    </div>
-  `
-    )
-    .join("");
+  if (caixa.checked) selecionados.add(pedidoId); else selecionados.delete(pedidoId);
+  atualizarBarra();
 }
 
-export function renderCourierAvailable(root) {
-  injetarEstilos();
-
-  const sessao = lerSessao();
-  const entregadores = listarEntregadores();
-  const courierId = sessao.courierId || (entregadores.find((c) => c.active) ?? entregadores[0]).id;
-  const entregadorAtual = entregadores.find((c) => c.id === courierId) || entregadores[0];
-  const empresaAtual = obterEmpresa(entregadorAtual.companyId);
-  const nomeEmpresa = empresaAtual?.name ?? "Forno da Vila";
-  const nomeEntregador = entregadorAtual.name;
-  const codigoEntregador = entregadorAtual.id.toUpperCase();
-
-  const opcoesEntregadores = entregadores
-    .map((c) => {
-      const emp = obterEmpresa(c.companyId);
-      const label = `${c.name} · ${emp?.name ?? ""}${c.active ? "" : " (inativo)"}`;
-      return `<option value="${c.id}" ${c.id === entregadorAtual.id ? "selected" : ""}>${label}</option>`;
-    })
-    .join("");
-
-  const pedidosProntos = listarPedidosProntos();
-  const viagemAtiva = obterViagemAtual(courierId);
-
-  root.innerHTML = `
-    <!-- Container para avisos flutuantes (RF-ENT-02, RF-ENT-03, RF-ENT-04 e RF-ENT-08) -->
-    <div id="container-aviso" style="display: none;"></div>
-
-    <header class="topbar">
-      <div class="topbar-left">
-        <a href="${rotas.inicio()}" class="logo-icon-small" title="Página Inicial">P</a>
-        <span><b>Peddi</b> Modo demonstração: troca de perfil</span>
-      </div>
-      <nav class="topbar-nav">
-        <a href="${rotas.admin()}" class="btn-nav" data-perfil="admin">Estabelecimento</a>
-        <a href="${rotas.pedidos()}" class="btn-nav" data-perfil="cliente">Cliente</a>
-        <a href="${rotas.entregador()}" class="btn-nav active" data-perfil="entregador">Entregador</a>
-      </nav>
-      <div class="topbar-right">
-        <select id="select-entregador-topbar" class="select-courier-topbar" aria-label="Entregador em demonstração">
-          ${opcoesEntregadores}
-        </select>
-      </div>
-    </header>
-
-    <main class="container">
-      <!-- RF-ENT-04 & RF-ENT-08: Se houver viagem ativa, exibe banner com bloqueio explícito -->
-      ${
-        viagemAtiva
-          ? `
-        <div class="banner-viagem-ativa">
-          <div>
-            <b>🛵 Você possui uma viagem em andamento!</b>
-            <small>${viagemAtiva.pedidos.length} pedido(s) em rota de entrega · Início de nova viagem bloqueado</small>
-            <div style="background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; padding: 4px 8px; border-radius: 4px; font-size: 0.78rem; font-weight: 700; margin-top: 6px; display: inline-flex; align-items: center; gap: 4px;">
-              🔒 Iniciar nova viagem fica bloqueado com aviso até a conclusão da atual (RF-ENT-08)
-            </div>
-          </div>
-          <a href="#/courier/trip" class="btn-retomar">Ver viagem atual →</a>
-        </div>
-      `
-          : ""
-      }
-
-      <div class="hero-card">
-        <div class="hero-header">
-          <div class="hero-brand">
-            <span class="logo-icon-small">P</span> Peddi Entregas
-          </div>
-          <span class="status-badge" style="${entregadorAtual.active ? '' : 'background: #fee2e2; color: #b91c1c;'}">
-            ${entregadorAtual.active ? "Ativo" : "Inativo"}
-          </span>
-        </div>
-        <div class="hero-body">
-          <p>Vinculado a</p>
-          <h2>${nomeEmpresa}</h2>
-          <p>${nomeEntregador} · ${codigoEntregador}</p>
-        </div>
-      </div>
-
-      <div class="section-header">
-        <div>
-          <h3>Prontos para retirada</h3>
-          <p>Selecione de 1 a 3 pedidos para montar sua viagem.</p>
-        </div>
-        <span id="badge-contador-prontos" class="badge-count">${pedidosProntos.length} prontos</span>
-      </div>
-
-      <!-- Demonstração do RF-ENT-03: Simular concorrência -->
-      <div class="demo-actions">
-        <span>🧪 <b>Teste RF-ENT-03:</b> Simular outro entregador pegando pedido</span>
-        <button id="btn-simular-conflito" class="btn-test" type="button">
-          Simular outro pegando #1050
-        </button>
-        <button id="btn-resetar-pedidos" class="btn-test" type="button">
-          Resetar pedidos
-        </button>
-      </div>
-
-      <div id="lista-pedidos" style="margin-top: 14px;">
-        ${gerarHtmlCards(pedidosProntos)}
-      </div>
-    </main>
-
-    <!-- RF-ENT-02 & RF-ENT-08: Barra de ação fixa inferior com bloqueio se houver viagem ativa -->
-    <div id="dock-inferior" class="fixed-bottom" style="${pedidosProntos.length === 0 ? "display: none;" : ""}">
-      <div class="action-bar">
-        ${
-          viagemAtiva
-            ? `
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <span style="font-size: 1.3rem;">🔒</span>
-            <div>
-              <b style="color: #fed7aa; font-size: 0.95rem; display: block;">Iniciar viagem bloqueado</b>
-              <small style="color: #cbd5e1; font-size: 0.8rem;">Viagem em andamento (${viagemAtiva.pedidos.length} paradas)</small>
-            </div>
-          </div>
-          <div class="action-buttons">
-            <button id="btn-iniciar" class="btn-start-trip" type="button" disabled title="Bloqueado: conclua sua viagem em andamento" style="opacity: 0.5; cursor: not-allowed;">
-              Iniciar viagem 🔒
-            </button>
-            <a href="#/courier/trip" class="btn-retomar" style="font-size: 0.85rem; padding: 8px 14px;">
-              Ver viagem atual →
-            </a>
-          </div>
-        `
-            : `
-          <span class="action-bar-counter">
-            <b id="contador-selecionados">0</b> de 3 selecionados
-          </span>
-          <div class="action-buttons">
-            <button id="btn-limpar" class="btn-clear" type="button">Limpar</button>
-            <button id="btn-iniciar" class="btn-start-trip" type="button" disabled>
-              Iniciar viagem 🛵
-            </button>
-          </div>
-        `
-        }
-      </div>
-    </div>
-  `;
-
-  // Configurar interatividade de seleção e trava atômica (RF-ENT-02, RF-ENT-03 e RF-ENT-04)
-  configurarSelecaoEConcorrencia(courierId, root);
+function limpar() {
+  selecionados.clear();
+  document.querySelectorAll(".selcard input").forEach((caixa) => { caixa.checked = false; });
+  atualizarBarra();
 }
 
-function configurarSelecaoEConcorrencia(courierId, root) {
-  const selecionados = new Set();
-  const viagemAtiva = obterViagemAtual(courierId);
-  const temViagemAtiva = Boolean(viagemAtiva);
+/* ---------- revisar e confirmar a viagem ---------- */
+function revisarViagem(entregador) {
+  const pedidos = pedidosProntos(entregador.companyId).filter((p) => selecionados.has(p.id));
+  if (!pedidos.length) { desenhar(); return; }
 
-  const contadorEl = document.getElementById("contador-selecionados");
-  const btnIniciar = document.getElementById("btn-iniciar");
-  const btnLimpar = document.getElementById("btn-limpar");
-  const containerAviso = document.getElementById("container-aviso");
-  const listaPedidosEl = document.getElementById("lista-pedidos");
-  const badgeProntosEl = document.getElementById("badge-contador-prontos");
-  const dockInferiorEl = document.getElementById("dock-inferior");
-  const btnSimularConflito = document.getElementById("btn-simular-conflito");
-  const btnResetar = document.getElementById("btn-resetar-pedidos");
-
-  let timeoutAviso = null;
-
-  function mostrarAviso(msg, tipo = "erro") {
-    if (timeoutAviso) clearTimeout(timeoutAviso);
-    const classeTipo = tipo === "sucesso" ? "aviso-sucesso" : "aviso-erro";
-    const icone = tipo === "sucesso" ? "✅" : "⚠️";
-
-    containerAviso.innerHTML = `
-      <div class="aviso-flutuante ${classeTipo}">
-        <span>${icone}</span>
-        <span>${msg}</span>
-      </div>
-    `;
-    containerAviso.style.display = "block";
-    timeoutAviso = setTimeout(() => {
-      containerAviso.style.display = "none";
-    }, 4500);
-  }
-
-  function toggleSelecao(id, checkbox) {
-    // RF-ENT-08 (Critério 1): Com viagem em andamento, seleção de pedidos é bloqueada com aviso
-    if (temViagemAtiva) {
-      if (checkbox) {
-        checkbox.checked = false;
-      }
-      mostrarAviso("Bloqueado: você já possui uma viagem em andamento. Conclua todas as entregas atuais antes de iniciar uma nova viagem!", "erro");
-      return;
-    }
-
-    if (selecionados.has(id)) {
-      selecionados.delete(id);
-    } else {
-      // RF-ENT-02: Limite máximo de 3 pedidos
-      if (selecionados.size >= 3) {
-        if (checkbox) {
-          checkbox.checked = false;
-        }
-        mostrarAviso("Limite atingido: você só pode selecionar até 3 pedidos por viagem!");
-        return;
-      }
-      selecionados.add(id);
-    }
-
-    atualizarInterface();
-  }
-
-  function vincularEventosCards() {
-    const cards = listaPedidosEl.querySelectorAll(".order-card");
-    cards.forEach((card) => {
-      const id = card.getAttribute("data-id");
-      const checkbox = card.querySelector('input[type="checkbox"]');
-
-      if (checkbox) {
-        checkbox.addEventListener("click", (event) => {
-          event.stopPropagation();
-          toggleSelecao(id, checkbox);
-        });
-      }
-
-      card.addEventListener("click", () => {
-        toggleSelecao(id, checkbox);
-      });
-    });
-  }
-
-  function atualizarListaPedidos() {
-    const pedidosProntos = listarPedidosProntos();
-
-    if (badgeProntosEl) {
-      badgeProntosEl.textContent = `${pedidosProntos.length} prontos`;
-    }
-
-    if (dockInferiorEl) {
-      dockInferiorEl.style.display = pedidosProntos.length === 0 ? "none" : "";
-    }
-
-    listaPedidosEl.innerHTML = gerarHtmlCards(pedidosProntos);
-    vincularEventosCards();
-    atualizarInterface();
-  }
-
-  function atualizarInterface() {
-    const total = selecionados.size;
-
-    if (contadorEl) {
-      contadorEl.textContent = total;
-    }
-
-    if (btnIniciar) {
-      btnIniciar.disabled = temViagemAtiva || total === 0;
-    }
-
-    const cards = listaPedidosEl.querySelectorAll(".order-card");
-    cards.forEach((card) => {
-      const id = card.getAttribute("data-id");
-      const checkbox = card.querySelector('input[type="checkbox"]');
-      const isSelected = selecionados.has(id);
-
-      if (checkbox) checkbox.checked = isSelected;
-      if (isSelected) {
-        card.classList.add("selected");
-      } else {
-        card.classList.remove("selected");
-      }
-    });
-
-    localStorage.setItem("peddi_pedidos_selecionados", JSON.stringify(Array.from(selecionados)));
-  }
-
-  // RF-ENT-03, RF-ENT-04 e RF-ENT-08: Botão Iniciar viagem com trava atômica e bloqueio de viagem simultânea
-  if (btnIniciar) {
-    btnIniciar.addEventListener("click", () => {
-      // RF-ENT-08 (Critério 1): Com viagem em andamento, Iniciar viagem fica bloqueado com aviso
-      if (temViagemAtiva) {
-        mostrarAviso("Iniciar viagem bloqueado: você já possui uma viagem em andamento. Conclua todas as entregas atuais primeiro!", "erro");
-        return;
-      }
-
-      if (selecionados.size === 0) return;
-
-      const idsParaIniciar = Array.from(selecionados);
-
-      // RF-ENT-04 & RF-ENT-08: Inicia a viagem, gera códigos de 4 dígitos e muda status para 'Saiu para entrega'
-      const resultado = iniciarViagem(idsParaIniciar, courierId);
-
-      if (!resultado.sucesso) {
-        if (resultado.motivo === "viagem_em_andamento") {
-          mostrarAviso(`Bloqueado: ${resultado.erro}`, "erro");
-          return;
-        }
-
-        // RF-ENT-03 Critério 2: Se outro pegou, aparece aviso e o pedido sai da seleção
-        const ocupados = resultado.ocupados || [];
-        const plural = ocupados.length > 1;
-        const mensagem = plural
-          ? `Atenção: Os pedidos ${ocupados.join(", ")} já foram reservados por outro entregador e foram removidos da sua seleção!`
-          : `Atenção: O pedido ${ocupados[0]} já foi reservado por outro entregador e foi removido da sua seleção!`;
-
-        mostrarAviso(mensagem, "erro");
-
-        // Remove da seleção os pedidos ocupados
-        ocupados.forEach((id) => selecionados.delete(id));
-
-        atualizarListaPedidos();
-        return;
-      }
-
-      // RF-ENT-04: Sucesso ao iniciar a viagem!
-      mostrarAviso("Viagem iniciada com sucesso! Liberando rota...", "sucesso");
-      setTimeout(() => {
-        location.hash = "#/courier/trip";
-      }, 600);
-    });
-  }
-
-  // Botão Limpar seleção
-  if (btnLimpar) {
-    btnLimpar.addEventListener("click", () => {
-      selecionados.clear();
-      atualizarInterface();
-    });
-  }
-
-  // Botão de simulação de concorrência
-  if (btnSimularConflito) {
-    btnSimularConflito.addEventListener("click", () => {
-      simularOutroEntregadorPegou("#1050", "ct_2");
-      mostrarAviso("Simulação: Outro entregador acabou de pegar o pedido #1050 no sistema!", "erro");
-    });
-  }
-
-  // Botão de reset de pedidos para o estado inicial
-  if (btnResetar) {
-    btnResetar.addEventListener("click", () => {
-      salvarPedidos(PEDIDOS_INICIAIS);
-      selecionados.clear();
-      mostrarAviso("Pedidos resetados para o estado inicial!", "sucesso");
-      atualizarListaPedidos();
-    });
-  }
-
-  // Sincronização automática
-  window.addEventListener("peddi_pedidos_alterados", () => {
-    const pedidos = obterPedidos();
-    selecionados.forEach((id) => {
-      const pedido = pedidos.find((p) => p.id === id);
-      if (!pedido || pedido.status !== "Pronto" || (pedido.entregador_id && pedido.entregador_id !== courierId)) {
-        selecionados.delete(id);
-      }
-    });
-    atualizarListaPedidos();
+  abrirJanela({
+    titulo: "Revisar viagem",
+    subtitulo: `${pedidos.length} ${plural(pedidos.length, "pedido", "pedidos")} · ${obterEmpresa(entregador.companyId).name}`,
+    corpo: el("div", { class: "stack" },
+      pedidos.map((p) => el("div", { class: "card pad-sm" },
+        el("div", { class: "row between" }, el("span", { class: "strong" }, p.id), el("span", { class: "muted small" }, p.address.district)),
+        el("div", { class: "muted small" }, resumoDosItens(p.id)))),
+      el("p", { class: "muted small" }, "Cada pedido continua independente, com cliente, endereço e código próprios. Os dados completos aparecem depois que você registrar a retirada.")),
+    rodape: [botaoFechar(), el("button", { type: "submit", class: "btn btn-primary" }, "Confirmar viagem")],
+    aoEnviar(janela) {
+      const resultado = criarViagem(entregador.id, [...selecionados]);
+      janela.close();
+      if (resultado.ok) { selecionados.clear(); navegar(rotas.entregadorViagem(resultado.id)); return; }
+      avisar(resultado.erro, "err");
+      desenhar();
+    },
   });
+}
 
-  window.addEventListener("storage", (e) => {
-    if (e.key === "peddi_pedidos") {
-      atualizarListaPedidos();
-    }
-    if (e.key === "peddi_viagem_atual") {
-      renderCourierAvailable(root);
-    }
+/* ---------- tela ---------- */
+function cartaoDoPedido(pedido, travado) {
+  const caixa = el("input", {
+    type: "checkbox", checked: selecionados.has(pedido.id), disabled: travado,
+    "aria-label": `Selecionar pedido ${pedido.id}`, onchange: () => alternar(pedido.id, caixa),
   });
+  return el("label", { class: "selcard" }, caixa,
+    el("div", { class: "grow" },
+      el("div", { class: "row between" }, el("span", { class: "oid-d" }, pedido.id), seloDeEstado(pedido.state)),
+      el("div", { class: "muted small" }, icone("pin", 13), ` ${pedido.address.district}`),
+      el("div", { class: "small", style: { margin: "4px 0" } }, resumoDosItens(pedido.id)),
+      el("div", { class: "muted small" }, `Pronto ${quando(ultimoEvento(pedido).at)} · valor informativo ${brl(pedido.total)}`)));
+}
 
-  window.addEventListener("peddi_viagem_encerrada", () => {
-    renderCourierAvailable(root);
-  });
+function desenhar() {
+  const entregador = entregadorAtual();
+  const empresa = obterEmpresa(entregador.companyId);
+  const prontos = pedidosProntos(entregador.companyId);
+  const ativa = viagemAtiva(entregador.id);
+  const travado = Boolean(ativa) || !entregador.active;
 
-  // Troca de perfil via topbar
-  root.querySelectorAll("[data-perfil]").forEach((el) => {
-    el.addEventListener("click", (e) => {
-      e.preventDefault();
-      const perfil = el.dataset.perfil;
-      gravarSessao({ ...lerSessao(), role: perfil });
-      navegar(rotaDoPerfil[perfil]());
-    });
-  });
+  for (const id of [...selecionados]) if (!prontos.some((p) => p.id === id)) selecionados.delete(id); // outro entregador pegou
 
-  // Troca de entregador via select da topbar
-  const seletorEntregador = root.querySelector("#select-entregador-topbar");
-  if (seletorEntregador) {
-    seletorEntregador.addEventListener("change", (e) => {
-      gravarSessao({ ...lerSessao(), courierId: e.target.value });
-      location.reload();
-    });
-  }
+  barra = {
+    contador: el("strong", {}, "0"),
+    limpar: el("button", { type: "button", class: "btn btn-sm btn-dark", onclick: limpar }, "Limpar"),
+    revisar: el("button", { type: "button", class: "btn btn-sm btn-primary", onclick: () => revisarViagem(entregador) }, "Revisar viagem"),
+  };
 
-  // Sincroniza se a sessão mudar em outra aba
-  window.addEventListener("storage", (e) => {
-    if (e.key === "peddi.v1.session") {
-      location.reload();
-    }
-  });
+  montarCasca("disp", entregador);
+  mount($("#main"),
+    avisoDeInativo(entregador),
+    ativa && el("div", { class: "banner bn-info", role: "status" }, icone("bike"),
+      el("div", { class: "grow" }, el("strong", {}, "Você tem uma viagem em andamento. "), "Conclua as entregas antes de iniciar outra.",
+        el("div", { style: { marginTop: "8px" } }, el("a", { class: "btn btn-dark btn-sm", href: rotas.entregadorViagem(ativa.id) }, "Ver viagem atual")))),
+    el("div", {},
+      el("h2", {}, "Pedidos prontos"),
+      el("p", { class: "muted small" }, `Somente pedidos de ${empresa.name}. Selecione até ${MAX_PEDIDOS_VIAGEM} para uma viagem.`)),
+    prontos.length
+      ? prontos.map((p) => cartaoDoPedido(p, travado))
+      : estadoVazio({ icone: "bag", titulo: "Nenhum pedido pronto agora", texto: "Quando o estabelecimento marcar pedidos como prontos, eles aparecem aqui." }),
+    prontos.length > 0 && !travado && el("div", { class: "actbar", role: "region", "aria-label": "Seleção" },
+      el("span", { "aria-live": "polite" }, barra.contador, ` de ${MAX_PEDIDOS_VIAGEM} selecionados`),
+      el("span", { class: "row" }, barra.limpar, barra.revisar)),
+  );
+  if (barra.contador.isConnected) atualizarBarra();
+}
 
-  vincularEventosCards();
-  atualizarInterface();
+aplicarTemaSalvo();
+carregarDados();
+if (exigirEntregador()) {
+  montarBarraDemo($("#demo"));
+  desenhar();
+  escutarMudancas(desenhar); // empresa ou outro entregador mexeu nos pedidos: redesenha
+  setInterval(() => { if (!document.querySelector("dialog[open]")) desenhar(); }, 60000);
 }
