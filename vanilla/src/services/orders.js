@@ -349,7 +349,89 @@ export function cancelarEntregaPedido(pedidoId, motivo = "Cancelado pelo cliente
 }
 
 /**
- * RF-ENT-08 (Critérios 2 e 3): Finaliza a viagem quando todos os pedidos forem Entregues ou Cancelados
+ * RF-ENT-09: Motivos pré-definidos para registro de entrega não concluída
+ */
+export const MOTIVOS_FALHA_ENTREGA = [
+  { id: "cliente_ausente", rotulo: "Cliente ausente" },
+  { id: "endereco_nao_encontrado", rotulo: "Endereço não encontrado" },
+  { id: "codigo_perdido", rotulo: "Código de confirmação perdido / cliente sem código" },
+  { id: "outro", rotulo: "Outro motivo" },
+];
+
+/**
+ * RF-ENT-09: Registra entrega não concluída com motivo e salva para visualização da empresa.
+ * Critérios atendidos:
+ * 1. Em pedido "Saiu para entrega", entregador registra "Entrega não concluída" informando o motivo.
+ * 2. Disponível também quando limite de tentativas se esgota (RF-ENT-07).
+ * 3. O pedido deixa de contar como pendente na viagem (ajuste RF-ENT-08).
+ * 4. O motivo fica salvo no pedido e visível para a empresa.
+ *
+ * @param {string} pedidoId - Identificador do pedido (ex: "PED-1046" ou "1046")
+ * @param {string} motivo - Motivo selecionado
+ * @param {string} detalhe - Detalhes adicionais se aplicável
+ * @returns {{ sucesso: boolean, pedidoId: string, status: string, motivo: string }}
+ */
+export function registrarFalhaEntrega(pedidoId, motivo, detalhe = "") {
+  const detalheLimpo = String(detalhe || "").trim();
+  const motivoFormatado = detalheLimpo ? `${motivo} (${detalheLimpo})` : motivo;
+  const agoraIso = new Date().toISOString();
+
+  const todosPedidos = obterPedidos();
+  const pedidosAtualizados = todosPedidos.map((p) => {
+    if (p.id === pedidoId) {
+      return {
+        ...p,
+        status: "Não concluído",
+        nao_concluido_em: agoraIso,
+        motivo_falha: motivoFormatado,
+        motivo_cancelamento: motivoFormatado,
+        bloqueado: false,
+      };
+    }
+    return p;
+  });
+
+  salvarPedidos(pedidosAtualizados);
+
+  // RF-ENT-09 (Critério 4): Salva motivo no pedido compartilhado e visível para a empresa
+  try {
+    const dados = obterDados();
+    if (dados && Array.isArray(dados.orders)) {
+      const numLimpo = pedidoId.replace(/\D/g, "");
+      const pedidoGlobal = dados.orders.find(
+        (o) =>
+          o.id === pedidoId ||
+          o.id === `PED-${numLimpo}` ||
+          String(o.id) === String(numLimpo)
+      );
+      if (pedidoGlobal) {
+        pedidoGlobal.state = "cancelado";
+        pedidoGlobal.reason = `Falha na entrega: ${motivoFormatado}`;
+        if (!pedidoGlobal.history) pedidoGlobal.history = [];
+        pedidoGlobal.history.push({
+          state: "cancelado",
+          by: "Entregador",
+          at: Date.now(),
+          note: `Entrega não concluída pelo entregador: ${motivoFormatado}`,
+        });
+        salvarDados();
+        window.dispatchEvent(new Event("storage"));
+      }
+    }
+  } catch (err) {
+    console.error("Erro ao sincronizar falha na entrega com dados globais:", err);
+  }
+
+  return {
+    sucesso: true,
+    pedidoId,
+    status: "Não concluído",
+    motivo: motivoFormatado,
+  };
+}
+
+/**
+ * RF-ENT-08 e RF-ENT-09: Finaliza a viagem quando todos os pedidos forem Entregues, Cancelados ou Não concluídos
  */
 export function finalizarViagem() {
   try {
@@ -594,10 +676,10 @@ export function validarEConfirmarEntrega(pedidoId, codigoDigitado) {
     };
   }
 
-  // RF-ENT-05 & RF-ENT-08: Confirmação na ordem das paradas (ignora já Entregues ou Cancelados)
+  // RF-ENT-05, RF-ENT-08 & RF-ENT-09: Confirmação na ordem das paradas (ignora já Entregues, Cancelados ou Não concluídos)
   const paradaPendenteAnterior = pedidos
     .slice(0, indiceAlvo)
-    .find((p) => p.status !== "Entregue" && p.status !== "Cancelado");
+    .find((p) => p.status !== "Entregue" && p.status !== "Cancelado" && p.status !== "Não concluído");
 
   if (paradaPendenteAnterior) {
     const numeroParadaPendente = pedidos.indexOf(paradaPendenteAnterior) + 1;
@@ -609,11 +691,11 @@ export function validarEConfirmarEntrega(pedidoId, codigoDigitado) {
   }
 
   const pedidoAlvo = pedidos[indiceAlvo];
-  if (pedidoAlvo.status === "Entregue" || pedidoAlvo.status === "Cancelado") {
+  if (pedidoAlvo.status === "Entregue" || pedidoAlvo.status === "Cancelado" || pedidoAlvo.status === "Não concluído") {
     return {
       sucesso: false,
       bloqueado: false,
-      erro: `Esta parada já foi ${pedidoAlvo.status === "Entregue" ? "confirmada" : "cancelada"} anteriormente.`,
+      erro: `Esta parada já foi finalizada como "${pedidoAlvo.status}" anteriormente.`,
     };
   }
 
@@ -698,10 +780,10 @@ export function validarEConfirmarEntrega(pedidoId, codigoDigitado) {
   // RF-ENT-06 (Critério 3): Cliente e empresa veem o pedido como Entregue
   sincronizarPedidoEntregueComDadosGlobais(pedidoAlvo, agoraIso);
 
-  // RF-ENT-06 & RF-ENT-08 (Critério 2): Progresso da viagem atualizado (todos Entregues ou Cancelados)
+  // RF-ENT-06, RF-ENT-08 & RF-ENT-09 (Critério 3): Progresso da viagem atualizado (todos Entregues, Cancelados ou Não concluídos)
   const viagemAtualizada = obterViagemAtual();
   const todosConcluidos = viagemAtualizada?.pedidosDetalhados.every(
-    (p) => p.status === "Entregue" || p.status === "Cancelado"
+    (p) => p.status === "Entregue" || p.status === "Cancelado" || p.status === "Não concluído"
   );
 
   return {

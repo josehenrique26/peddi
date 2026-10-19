@@ -6,6 +6,8 @@ import {
   validarEConfirmarEntrega,
   resetarTentativasPedido,
   cancelarEntregaPedido,
+  registrarFalhaEntrega,
+  MOTIVOS_FALHA_ENTREGA,
 } from "../services/orders.js";
 import { lerSessao, gravarSessao } from "../services/storage.js";
 import { rotas, rotaDoPerfil, navegar } from "../utils/routes.js";
@@ -90,6 +92,10 @@ function injetarEstilosTrip() {
       background: #64748b;
       box-shadow: 0 2px 6px rgba(100, 116, 139, 0.3);
     }
+    .stop-number.nao-concluido {
+      background: #dc2626;
+      box-shadow: 0 2px 6px rgba(220, 38, 38, 0.35);
+    }
     .stop-number.blocked-stop {
       background: #dc2626;
       box-shadow: 0 2px 6px rgba(220, 38, 38, 0.35);
@@ -107,6 +113,7 @@ function injetarEstilosTrip() {
     .status-badge-trip { background: var(--orange-bg); color: var(--orange-text); padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; }
     .status-badge-trip.entregue { background: var(--green-bg); color: var(--green-text); }
     .status-badge-trip.cancelado { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+    .status-badge-trip.nao-concluido { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
     .status-badge-trip.blocked { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
     
     .stop-addr { font-size: 1.15rem; font-weight: 700; color: #1e293b; margin-bottom: 4px; }
@@ -563,6 +570,161 @@ function injetarEstilosTrip() {
     .trip-finished-card h3 { color: #065f46; font-size: 1.3rem; margin: 0; }
     .trip-finished-card p { color: #047857; font-size: 0.95rem; margin: 0; }
 
+    /* RF-ENT-09: Estilos de Entrega Não Concluída e Modal de Motivo */
+    .delivery-failed-box {
+      background: #fff1f2;
+      border: 1.5px solid #fecdd3;
+      border-radius: 10px;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: #9f1239;
+    }
+    .failed-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #e11d48;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 1.1rem;
+    }
+    .failed-text b { display: block; font-size: 0.95rem; color: #881337; }
+    .failed-text small { color: #9f1239; font-size: 0.82rem; }
+
+    .btn-fail-delivery {
+      background: #fff;
+      border: 1px solid #cbd5e1;
+      color: #b91c1c;
+      padding: 7px 12px;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+    .btn-fail-delivery:hover {
+      background: #fee2e2;
+      border-color: #f87171;
+      color: #991b1b;
+    }
+    .btn-fail-prominent {
+      background: #dc2626;
+      color: #fff;
+      border: none;
+      padding: 9px 16px;
+      font-size: 0.88rem;
+      font-weight: 700;
+    }
+    .btn-fail-prominent:hover {
+      background: #b91c1c;
+      color: #fff;
+    }
+
+    .fail-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 2000;
+      animation: fadeIn 0.15s ease;
+      backdrop-filter: blur(2px);
+    }
+    .fail-modal-content {
+      background: #fff;
+      border-radius: 14px;
+      max-width: 480px;
+      width: 100%;
+      padding: 24px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    }
+    .fail-modal-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .fail-modal-header h3 {
+      font-size: 1.15rem;
+      color: #1e293b;
+      margin: 0;
+    }
+    .fail-modal-p {
+      color: #64748b;
+      font-size: 0.88rem;
+      line-height: 1.45;
+      margin-bottom: 16px;
+    }
+    .fail-reasons-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .fail-reason-label {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px 14px;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      color: #1e293b;
+      transition: all 0.15s ease;
+    }
+    .fail-reason-label:hover {
+      background: #f8fafc;
+      border-color: #cbd5e1;
+    }
+    .fail-reason-label input[type="radio"] {
+      margin-top: 3px;
+      accent-color: #dc2626;
+    }
+    .fail-modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 18px;
+    }
+    .btn-fail-cancel {
+      background: #f1f5f9;
+      color: #475569;
+      border: 1px solid #cbd5e1;
+      padding: 9px 16px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .btn-fail-cancel:hover {
+      background: #e2e8f0;
+      color: #1e293b;
+    }
+    .btn-fail-confirm {
+      background: #dc2626;
+      color: #fff;
+      border: none;
+      padding: 9px 18px;
+      border-radius: 6px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+    .btn-fail-confirm:hover {
+      background: #b91c1c;
+    }
+
     @media (max-width: 600px) {
       .stop-actions { grid-template-columns: 1fr; }
     }
@@ -614,6 +776,121 @@ function exibirToast(mensagem, tipo = "sucesso") {
   setTimeout(() => {
     toast.remove();
   }, 4000);
+}
+
+/**
+ * RF-ENT-09 (Critérios 1, 2 e 4): Abre modal acessível para seleção do motivo da falha na entrega
+ */
+function abrirModalFalha(root, pedidoId) {
+  const antigo = document.querySelector(".fail-modal-overlay");
+  if (antigo) antigo.remove();
+
+  const modal = document.createElement("div");
+  modal.className = "fail-modal-overlay";
+  modal.innerHTML = `
+    <div class="fail-modal-content" role="dialog" aria-modal="true" aria-labelledby="fail-title">
+      <div class="fail-modal-header">
+        <span style="font-size: 1.6rem;">⚠️</span>
+        <div>
+          <h3 id="fail-title">Registrar Entrega Não Concluída</h3>
+          <small style="color: #64748b; font-weight: 600;">Pedido ${pedidoId}</small>
+        </div>
+      </div>
+      <p class="fail-modal-p">
+        Informe o motivo pelo qual a entrega não pôde ser realizada. Esse registro ficará salvo no pedido e visível para o estabelecimento.
+      </p>
+
+      <form id="form-falha-entrega">
+        <div class="fail-reasons-list">
+          <label class="fail-reason-label">
+            <input type="radio" name="motivo_falha" value="Cliente ausente" checked />
+            <div>
+              <b>Cliente ausente</b>
+              <div style="font-size: 0.8rem; color: #64748b;">Ninguém atendeu no endereço após tentativas de contato</div>
+            </div>
+          </label>
+          <label class="fail-reason-label">
+            <input type="radio" name="motivo_falha" value="Endereço não encontrado" />
+            <div>
+              <b>Endereço não encontrado</b>
+              <div style="font-size: 0.8rem; color: #64748b;">Número ou rua não localizados / área inacessível</div>
+            </div>
+          </label>
+          <label class="fail-reason-label">
+            <input type="radio" name="motivo_falha" value="Código de confirmação perdido / cliente sem código" />
+            <div>
+              <b>Código perdido / cliente sem código</b>
+              <div style="font-size: 0.8rem; color: #64748b;">Cliente sem celular ou impossibilitado de informar o código</div>
+            </div>
+          </label>
+          <label class="fail-reason-label">
+            <input type="radio" name="motivo_falha" value="Outro motivo" id="radio-outro-motivo" />
+            <div>
+              <b>Outro motivo</b>
+              <div style="font-size: 0.8rem; color: #64748b;">Especifique abaixo o que aconteceu</div>
+            </div>
+          </label>
+        </div>
+
+        <div id="campo-detalhe-outro" style="margin-bottom: 16px; display: none;">
+          <label style="display: block; font-size: 0.85rem; font-weight: 600; color: #334155; margin-bottom: 4px;">
+            Descreva o motivo:
+          </label>
+          <textarea
+            id="textarea-detalhe-falha"
+            rows="2"
+            placeholder="Ex.: Local interditado, cliente recusou o pedido, etc."
+            style="width: 100%; padding: 8px 10px; border: 1.5px solid #cbd5e1; border-radius: 6px; font-family: inherit; font-size: 0.88rem; outline: none; box-sizing: border-box;"
+          ></textarea>
+        </div>
+
+        <div class="fail-modal-actions">
+          <button type="button" class="btn-fail-cancel" id="btn-fechar-modal-falha">
+            Voltar
+          </button>
+          <button type="submit" class="btn-fail-confirm">
+            Confirmar Registro
+          </button>
+        </div>
+      </form>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  const form = modal.querySelector("#form-falha-entrega");
+  const radioOutro = modal.querySelector("#radio-outro-motivo");
+  const campoDetalhe = modal.querySelector("#campo-detalhe-outro");
+  const textareaDetalhe = modal.querySelector("#textarea-detalhe-falha");
+  const btnFechar = modal.querySelector("#btn-fechar-modal-falha");
+
+  modal.querySelectorAll('input[name="motivo_falha"]').forEach((radio) => {
+    radio.addEventListener("change", () => {
+      if (radioOutro && radioOutro.checked) {
+        campoDetalhe.style.display = "block";
+        if (textareaDetalhe) textareaDetalhe.focus();
+      } else {
+        campoDetalhe.style.display = "none";
+      }
+    });
+  });
+
+  btnFechar.addEventListener("click", () => modal.remove());
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) modal.remove();
+  });
+
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const selecionado = modal.querySelector('input[name="motivo_falha"]:checked');
+    const motivoBase = selecionado ? selecionado.value : "Cliente ausente";
+    const detalhe = textareaDetalhe ? textareaDetalhe.value.trim() : "";
+
+    registrarFalhaEntrega(pedidoId, motivoBase, detalhe);
+    modal.remove();
+    exibirToast(`Pedido ${pedidoId} registrado como não concluído.`, "sucesso");
+    renderCourierTrip(root);
+  });
 }
 
 export function renderCourierTrip(root) {
@@ -676,10 +953,13 @@ export function renderCourierTrip(root) {
   const pedidos = viagem.pedidosDetalhados;
   const entregues = pedidos.filter((p) => p.status === "Entregue").length;
   const cancelados = pedidos.filter((p) => p.status === "Cancelado").length;
-  const concluidos = entregues + cancelados;
+  const naoConcluidos = pedidos.filter((p) => p.status === "Não concluído").length;
+  const concluidos = entregues + cancelados + naoConcluidos;
   const total = pedidos.length;
   const percentual = total > 0 ? Math.round((concluidos / total) * 100) : 0;
-  const indiceParadaAtual = pedidos.findIndex((p) => p.status !== "Entregue" && p.status !== "Cancelado");
+  const indiceParadaAtual = pedidos.findIndex(
+    (p) => p.status !== "Entregue" && p.status !== "Cancelado" && p.status !== "Não concluído"
+  );
   const todosConcluidos = concluidos === total;
 
   root.innerHTML = `
@@ -708,18 +988,22 @@ export function renderCourierTrip(root) {
         <span style="font-size: 0.85rem; color: #64748b; font-weight: 600;">Viagem em andamento</span>
       </div>
 
-      <!-- RF-ENT-04, RF-ENT-05, RF-ENT-06 & RF-ENT-08: Barra de progresso X de N paradas concluídas -->
+      <!-- RF-ENT-04, RF-ENT-05, RF-ENT-06, RF-ENT-08 & RF-ENT-09: Barra de progresso X de N paradas concluídas -->
       <section class="prog-card">
         <div class="track">
           <i class="track-bar" style="width: ${percentual}%;"></i>
         </div>
         <div class="prog-row">
-          <b>${concluidos} de ${total} paradas concluídas (${percentual}%)${cancelados > 0 ? ` · <span style="font-size:0.85rem; font-weight:normal; color:#64748b;">(${entregues} entregue${entregues > 1 ? 's' : ''}, ${cancelados} cancelado${cancelados > 1 ? 's' : ''})</span>` : ''}</b>
+          <b>${concluidos} de ${total} paradas concluídas (${percentual}%)${
+            (cancelados > 0 || naoConcluidos > 0)
+              ? ` · <span style="font-size:0.85rem; font-weight:normal; color:#64748b;">(${entregues} entregue${entregues !== 1 ? 's' : ''}${naoConcluidos > 0 ? `, ${naoConcluidos} não concluída${naoConcluidos !== 1 ? 's' : ''}` : ''}${cancelados > 0 ? `, ${cancelados} cancelado${cancelados !== 1 ? 's' : ''}` : ''})</span>`
+              : ""
+          }</b>
           <small>${todosConcluidos ? "Viagem concluída 🎉" : `Parada atual: ${indiceParadaAtual + 1} de ${total}`}</small>
         </div>
       </section>
 
-      <!-- RF-ENT-04, RF-ENT-05 & RF-ENT-06: Paradas numeradas com validação sequencial por código -->
+      <!-- RF-ENT-04, RF-ENT-05, RF-ENT-06 & RF-ENT-09: Paradas numeradas com validação sequencial -->
       <div class="stops">
         ${pedidos
           .map((pedido, index) => {
@@ -729,6 +1013,7 @@ export function renderCourierTrip(root) {
             );
             const isEntregue = pedido.status === "Entregue";
             const isCancelado = pedido.status === "Cancelado";
+            const isNaoConcluido = pedido.status === "Não concluído";
             const tentativasRestantes =
               typeof pedido.tentativas_restantes === "number"
                 ? pedido.tentativas_restantes
@@ -747,9 +1032,17 @@ export function renderCourierTrip(root) {
                   minute: "2-digit",
                 })
               : "";
+            const horaNaoConcluido = pedido.nao_concluido_em
+              ? new Date(pedido.nao_concluido_em).toLocaleTimeString("pt-BR", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              : "";
 
             const stopNumberClass = isEntregue
               ? "stop-number entregue"
+              : isNaoConcluido
+              ? "stop-number nao-concluido"
               : isCancelado
               ? "stop-number cancelado"
               : isBloqueado && isAtual
@@ -760,6 +1053,8 @@ export function renderCourierTrip(root) {
 
             const statusBadgeClass = isEntregue
               ? "status-badge-trip entregue"
+              : isNaoConcluido
+              ? "status-badge-trip nao-concluido"
               : isCancelado
               ? "status-badge-trip cancelado"
               : isBloqueado && isAtual
@@ -768,6 +1063,8 @@ export function renderCourierTrip(root) {
 
             const statusTexto = isEntregue
               ? "Entregue"
+              : isNaoConcluido
+              ? "Não concluído"
               : isCancelado
               ? "Cancelado"
               : isBloqueado && isAtual
@@ -777,7 +1074,7 @@ export function renderCourierTrip(root) {
             return `
           <article class="stop" data-pedido-id="${pedido.id}">
             <span class="${stopNumberClass}">
-              ${isEntregue ? "✓" : isCancelado ? "✕" : isBloqueado && isAtual ? "🚫" : numeroParada}
+              ${isEntregue ? "✓" : isNaoConcluido ? "⚠️" : isCancelado ? "✕" : isBloqueado && isAtual ? "🚫" : numeroParada}
             </span>
             <div class="stop-card">
               <div class="stop-header">
@@ -822,7 +1119,7 @@ export function renderCourierTrip(root) {
                 </a>
               </div>
 
-              <!-- RF-ENT-05, RF-ENT-06, RF-ENT-07 & RF-ENT-08: Validação por código, tentativas e finalização -->
+              <!-- RF-ENT-05, RF-ENT-06, RF-ENT-07, RF-ENT-08 & RF-ENT-09: Confirmação ou Registro de Falha -->
               <div class="delivery-confirm-section">
                 ${
                   isEntregue
@@ -832,6 +1129,16 @@ export function renderCourierTrip(root) {
                     <div class="confirmed-text">
                       <b>Entrega confirmada com sucesso!</b>
                       <small>Status: Entregue · Confirmado${horaEntrega ? ` às ${horaEntrega}` : ""}</small>
+                    </div>
+                  </div>
+                  `
+                    : isNaoConcluido
+                    ? `
+                  <div class="delivery-failed-box">
+                    <span class="failed-icon">⚠️</span>
+                    <div class="failed-text">
+                      <b>Entrega Não Concluída</b>
+                      <small>${pedido.motivo_falha || "Falha registrada"} · Registrado${horaNaoConcluido ? ` às ${horaNaoConcluido}` : ""}</small>
                     </div>
                   </div>
                   `
@@ -856,12 +1163,12 @@ export function renderCourierTrip(root) {
                       </div>
                     </div>
                     <p class="blocked-text">
-                      O código de confirmação foi inserido incorretamente 3 vezes seguidas. Por motivos de segurança, esta parada foi bloqueada e não pode ser concluída pelo aplicativo.
+                      O código de confirmação foi inserido incorretamente 3 vezes seguidas. Por motivos de segurança, esta parada foi bloqueada e não pode ser concluída pelo código do cliente.
                     </p>
                     <div class="blocked-contact-box">
                       <div class="contact-header">
                         <b>📞 Orientação ao entregador:</b>
-                        <span>Entre em contato imediatamente com o estabelecimento parceiro para conferência ou liberação:</span>
+                        <span>Entre em contato imediatamente com o estabelecimento parceiro para conferência:</span>
                       </div>
                       <div class="contact-details">
                         <span class="company-name">🏪 Estabelecimento: <b>${empresaAtual?.name || "Estabelecimento"}</b></span>
@@ -874,10 +1181,19 @@ export function renderCourierTrip(root) {
                         Ligar para ${empresaAtual?.name || "Estabelecimento"}
                       </a>
                     </div>
-                    <div class="blocked-test-actions" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-                      <button type="button" class="btn-cancel-stop" data-cancel-pedido-id="${pedido.id}">
-                        ✕ Cancelar entrega deste pedido (insucesso)
+
+                    <!-- RF-ENT-09 (Critério 2): Registro disponível quando tentativas se esgotam -->
+                    <div style="background: #fff; border: 1.5px solid #fecaca; border-radius: 8px; padding: 14px; margin-top: 10px;">
+                      <b style="color: #991b1b; font-size: 0.92rem; display: block; margin-bottom: 4px;">Não conseguiu contato ou confirmação?</b>
+                      <p style="color: #64748b; font-size: 0.82rem; margin-bottom: 12px; line-height: 1.4;">
+                        Registre como "Entrega não concluída" informando o motivo (cliente ausente, código perdido, etc.) para que a rota continue e você não fique bloqueado (RF-ENT-09).
+                      </p>
+                      <button type="button" class="btn-fail-delivery btn-fail-prominent" data-fail-pedido-id="${pedido.id}">
+                        ⚠️ Registrar Entrega Não Concluída
                       </button>
+                    </div>
+
+                    <div class="blocked-test-actions" style="display:flex; justify-content:flex-end; margin-top: 10px;">
                       <button type="button" class="btn-reset-attempts" data-reset-pedido-id="${pedido.id}">
                         🔄 Resetar tentativas (demonstração / teste)
                       </button>
@@ -917,9 +1233,11 @@ export function renderCourierTrip(root) {
                       <span>💡 Código do cliente para teste:</span>
                       <b>${pedido.codigo_entrega || "----"}</b>
                     </div>
-                    <div style="margin-top: 10px; display: flex; justify-content: flex-end;">
-                      <button type="button" class="btn-cancel-stop" data-cancel-pedido-id="${pedido.id}">
-                        ✕ Cancelar entrega deste pedido (cliente ausente)
+
+                    <!-- RF-ENT-09 (Critério 1): Em pedido 'Saiu para entrega', entregador pode registrar falha com motivo -->
+                    <div style="margin-top: 14px; padding-top: 12px; border-top: 1px dashed #cbd5e1; display: flex; justify-content: flex-end;">
+                      <button type="button" class="btn-fail-delivery" data-fail-pedido-id="${pedido.id}">
+                        ⚠️ Registrar Entrega Não Concluída
                       </button>
                     </div>
                   </div>
@@ -950,7 +1268,7 @@ export function renderCourierTrip(root) {
         <div class="trip-finished-card">
           <div style="font-size: 2.5rem;">🎉</div>
           <h3>Todas as paradas foram concluídas!</h3>
-          <p>Esta viagem foi finalizada com êxito (${entregues} entregue${entregues > 1 ? 's' : ''}${cancelados > 0 ? `, ${cancelados} cancelado${cancelados > 1 ? 's' : ''}` : ''}).</p>
+          <p>Esta viagem foi finalizada com êxito (${entregues} entregue${entregues !== 1 ? 's' : ''}${naoConcluidos > 0 ? `, ${naoConcluidos} não concluída${naoConcluidos !== 1 ? 's' : ''}` : ''}${cancelados > 0 ? `, ${cancelados} cancelado${cancelados !== 1 ? 's' : ''}` : ''}).</p>
           <button id="btn-concluir-viagem" class="btn-confirm-delivery" style="padding: 12px 28px; font-size: 1rem; cursor: pointer;" type="button">
             Encerrar Viagem e Voltar à Lista de Pedidos 📦
           </button>
@@ -1057,6 +1375,14 @@ export function renderCourierTrip(root) {
       resetarTentativasPedido(pedidoId);
       exibirToast("Tentativas resetadas para 3. Você pode tentar novamente.", "sucesso");
       renderCourierTrip(root);
+    });
+  });
+
+  // RF-ENT-09 (Critérios 1 e 2): Registrar entrega não concluída com modal
+  root.querySelectorAll(".btn-fail-delivery[data-fail-pedido-id]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const pedidoId = btn.dataset.failPedidoId;
+      abrirModalFalha(root, pedidoId);
     });
   });
 
