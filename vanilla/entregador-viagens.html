@@ -1,0 +1,31 @@
+<!doctype html>
+<!-- entregador-viagens.html — Lista das viagens do entregador. -->
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Minhas viagens · Peddi</title>
+    <link rel="icon" href="/img/logo.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/src/styles/main.css" />
+    <link rel="stylesheet" href="/src/styles/pages/courier.css" />
+  </head>
+  <body>
+    <a class="sr" href="#main">Ir para o conteúdo</a>
+    <div class="demo" id="demo" role="region" aria-label="Controles de demonstração"></div>
+
+    <div class="cr">
+      <!-- Topo e navegação inferior: preenchidos por src/components/courier-shell.js -->
+      <header class="cr-head" id="cr-topo"></header>
+      <main class="cr-main" id="main"></main>
+      <nav class="cr-nav" id="cr-nav" aria-label="Navegação do entregador"></nav>
+    </div>
+
+    <script type="module" src="/src/pages/courier-trips.js"></script>
+  </body>
+</html>
