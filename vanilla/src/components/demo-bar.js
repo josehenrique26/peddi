@@ -21,12 +21,15 @@ function configDoSeletor(perfil) {
   }[perfil];
 }
 
-export function montarBarraDemo(container) {
+// No index (inicio: true) a barra aparece sempre no estado inicial: nenhum perfil marcado e sem seletor.
+// Só a EXIBIÇÃO muda: a sessão continua no LocalStorage, e escolher um perfil de novo reaproveita as escolhas anteriores.
+export function montarBarraDemo(container, { inicio = false } = {}) {
   const sessao = lerSessao();
-  const config = configDoSeletor(sessao.role);
+  const perfilAtivo = inicio ? null : sessao.role;
+  const config = configDoSeletor(perfilAtivo);
 
   const botoesPerfil = PERFIS.map(([perfil, rotulo, nomeIcone]) => `
-    <button type="button" aria-pressed="${sessao.role === perfil}" data-perfil="${perfil}">
+    <button type="button" aria-pressed="${perfilAtivo === perfil}" data-perfil="${perfil}">
       <span data-icon="${nomeIcone}" data-size="16"></span> ${rotulo}
     </button>`).join("");
 
