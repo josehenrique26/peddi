@@ -12,6 +12,7 @@ export default defineConfig(({ command }) => ({
         admin: resolve(import.meta.dirname, "admin.html"),
         adminPedidos: resolve(import.meta.dirname, "admin-pedidos.html"),
         adminConfig: resolve(import.meta.dirname, "admin-config.html"),
+        adminCardapio: resolve(import.meta.dirname, "admin-cardapio.html"),
         entregador: resolve(import.meta.dirname, "entregador.html"),
         loja: resolve(import.meta.dirname, "loja.html"),
         carrinho: resolve(import.meta.dirname, "carrinho.html"),
