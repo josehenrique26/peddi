@@ -132,7 +132,7 @@ function montarPerfis() {
 aplicarTemaSalvo();
 carregarDados();
 montarLogos();
-montarBarraDemo($("#demo"));
+montarBarraDemo($("#demo"), { inicio: true }); // no index a barra sempre começa sem perfil marcado
 iniciarAcesso();
 montarComanda();
 montarPerfis();
