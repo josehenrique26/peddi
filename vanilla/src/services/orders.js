@@ -1,6 +1,4 @@
-// src/services/orders.js — Serviço de pedidos, reserva e viagens (RF-ENT-01 ao RF-ENT-04)
-
-import { obterDados } from "./storage.js";
+import { obterDados, salvarDados } from "./storage.js";
 
 export const CHAVE_PEDIDOS = "peddi_pedidos";
 export const CHAVE_SELECIONADOS = "peddi_pedidos_selecionados";
@@ -217,6 +215,16 @@ export function iniciarViagem(idsPedidos, courierId = "ct_1") {
     return { sucesso: false, motivo: "nenhum_pedido" };
   }
 
+  // RF-ENT-08 (Critério 1): Com viagem em andamento, Iniciar viagem fica bloqueado com aviso
+  const viagemAtual = obterViagemAtual(courierId);
+  if (viagemAtual && viagemAtual.status === "em_andamento") {
+    return {
+      sucesso: false,
+      motivo: "viagem_em_andamento",
+      erro: "Você já possui uma viagem em andamento. Conclua todas as entregas antes de iniciar uma nova viagem.",
+    };
+  }
+
   // Primeiro faz a conferência atômica da reserva (RF-ENT-03)
   const reserva = reservarPedidosAtomicamente(idsPedidos, courierId);
   if (!reserva.sucesso) {
@@ -234,6 +242,7 @@ export function iniciarViagem(idsPedidos, courierId = "ct_1") {
         entregador_id: courierId,
         codigo_entrega: codigo,
         tentativas_restantes: 3,
+        bloqueado: false,
         saiu_em: new Date().toISOString(),
       };
     }
@@ -241,6 +250,9 @@ export function iniciarViagem(idsPedidos, courierId = "ct_1") {
   });
 
   salvarPedidos(pedidosAtualizados);
+
+  // RF-ENT-06: Sincroniza pedidos para 'em_entrega' no banco de dados compartilhado (peddi.v1.data)
+  sincronizarPedidoEmEntregaComDadosGlobais(idsPedidos, courierId);
 
   // Cria a viagem em andamento
   const viagem = {
@@ -261,16 +273,17 @@ export function iniciarViagem(idsPedidos, courierId = "ct_1") {
 }
 
 /**
- * RF-ENT-04: Critério 5 - "Reabrir o sistema retoma a viagem atual"
- * Retorna os dados da viagem atual se ela estiver em andamento.
+ * RF-ENT-04 & RF-ENT-08: Retorna os dados da viagem atual se ela estiver em andamento.
+ * Pode ser filtrado por entregador para garantir 1 viagem por vez para cada um.
  */
-export function obterViagemAtual() {
+export function obterViagemAtual(courierId = null) {
   const salvo = localStorage.getItem(CHAVE_VIAGEM);
   if (!salvo) return null;
 
   try {
     const viagem = JSON.parse(salvo);
     if (!viagem || viagem.status !== "em_andamento") return null;
+    if (courierId && viagem.courierId && viagem.courierId !== courierId) return null;
 
     const todosPedidos = obterPedidos();
     const pedidosDetalhados = viagem.pedidos
@@ -287,11 +300,79 @@ export function obterViagemAtual() {
 }
 
 /**
- * Finaliza a viagem atual
+ * RF-ENT-08: Cancela a entrega de um pedido na viagem (ex: cliente ausente/recusa)
+ */
+export function cancelarEntregaPedido(pedidoId, motivo = "Cancelado pelo cliente/estabelecimento") {
+  const todosPedidos = obterPedidos();
+  const pedidosAtualizados = todosPedidos.map((p) => {
+    if (p.id === pedidoId) {
+      return {
+        ...p,
+        status: "Cancelado",
+        cancelado_em: new Date().toISOString(),
+        motivo_cancelamento: motivo,
+      };
+    }
+    return p;
+  });
+
+  salvarPedidos(pedidosAtualizados);
+
+  try {
+    const dados = obterDados();
+    if (dados && Array.isArray(dados.orders)) {
+      const numLimpo = pedidoId.replace(/\D/g, "");
+      const pedidoGlobal = dados.orders.find(
+        (o) =>
+          o.id === pedidoId ||
+          o.id === `PED-${numLimpo}` ||
+          String(o.id) === String(numLimpo)
+      );
+      if (pedidoGlobal) {
+        pedidoGlobal.state = "cancelado";
+        if (!pedidoGlobal.history) pedidoGlobal.history = [];
+        pedidoGlobal.history.push({
+          state: "cancelado",
+          by: "Estabelecimento",
+          at: Date.now(),
+          note: motivo,
+        });
+        salvarDados();
+        window.dispatchEvent(new Event("storage"));
+      }
+    }
+  } catch (err) {
+    console.error("Erro ao sincronizar cancelamento com dados globais:", err);
+  }
+
+  return { sucesso: true, pedidoId, status: "Cancelado" };
+}
+
+/**
+ * RF-ENT-08 (Critérios 2 e 3): Finaliza a viagem quando todos os pedidos forem Entregues ou Cancelados
  */
 export function finalizarViagem() {
+  try {
+    const viagemAtual = obterViagemAtual();
+    if (viagemAtual) {
+      const dados = obterDados();
+      if (dados && Array.isArray(dados.trips)) {
+        const trip = dados.trips.find((t) => t.id === viagemAtual.id);
+        if (trip) {
+          trip.state = "concluida";
+          trip.finishedAt = Date.now();
+        }
+      }
+      salvarDados();
+      window.dispatchEvent(new Event("storage"));
+    }
+  } catch (err) {
+    console.error("Erro ao finalizar viagem no storage global:", err);
+  }
+
   localStorage.removeItem(CHAVE_VIAGEM);
   localStorage.removeItem(CHAVE_SELECIONADOS);
+  window.dispatchEvent(new CustomEvent("peddi_viagem_encerrada"));
 }
 
 /**
@@ -313,4 +394,323 @@ export function simularOutroEntregadorPegou(
     return p;
   });
   salvarPedidos(pedidosAtualizados);
+}
+
+/**
+ * RF-ENT-06: Sincroniza pedidos para 'em_entrega' nos dados compartilhados (peddi.v1.data)
+ */
+export function sincronizarPedidoEmEntregaComDadosGlobais(idsPedidos, courierId) {
+  try {
+    const dados = obterDados();
+    if (!dados || !Array.isArray(dados.orders)) return;
+
+    const agora = Date.now();
+    idsPedidos.forEach((id) => {
+      const numLimpo = id.replace(/\D/g, "");
+      const pedidoGlobal = dados.orders.find(
+        (o) => o.id === id || o.id === `PED-${numLimpo}` || String(o.id) === String(numLimpo)
+      );
+      if (pedidoGlobal) {
+        pedidoGlobal.state = "em_entrega";
+        if (!pedidoGlobal.history) pedidoGlobal.history = [];
+        pedidoGlobal.history.push({
+          state: "em_entrega",
+          by: "Entregador",
+          at: agora,
+        });
+      }
+    });
+
+    salvarDados();
+    window.dispatchEvent(new Event("storage"));
+  } catch (err) {
+    console.error("Erro ao sincronizar pedido em entrega com dados globais:", err);
+  }
+}
+
+/**
+ * RF-ENT-06: Sincroniza pedido entregue com o storage global (peddi.v1.data)
+ * Garante que cliente e empresa vejam o pedido como 'Entregue' (Critério 3)
+ */
+export function sincronizarPedidoEntregueComDadosGlobais(pedidoAlvo, agoraIso = new Date().toISOString()) {
+  try {
+    const dados = obterDados();
+    if (!dados || !Array.isArray(dados.orders)) return;
+
+    const timestampMs = new Date(agoraIso).getTime();
+    const pedidoId = pedidoAlvo.id;
+    const numLimpo = pedidoId.replace(/\D/g, "");
+
+    let pedidoGlobal = dados.orders.find(
+      (o) => o.id === pedidoId ||
+             o.id === `PED-${numLimpo}` ||
+             String(o.id) === String(numLimpo)
+    );
+
+    if (pedidoGlobal) {
+      pedidoGlobal.state = "entregue";
+      if (!pedidoGlobal.history) pedidoGlobal.history = [];
+      pedidoGlobal.history.push({
+        state: "entregue",
+        by: "Entregador",
+        at: timestampMs,
+        note: "Confirmado com código de 4 dígitos",
+      });
+    } else {
+      // Sincroniza criando a entrada em dados.orders para o dashboard da empresa e cliente
+      const valorNumerico = parseFloat(
+        String(pedidoAlvo.valor || "50")
+          .replace(/[^\d,]/g, "")
+          .replace(",", ".")
+      );
+      const totalCentavos = Math.round((valorNumerico || 50) * 100);
+
+      pedidoGlobal = {
+        id: `PED-${numLimpo || "1046"}`,
+        companyId: "co_forno",
+        customerId: "cu_1",
+        state: "entregue",
+        address: {
+          street: pedidoAlvo.endereco_completo || "Endereço do cliente",
+          district: pedidoAlvo.bairro || "Centro",
+          complement: pedidoAlvo.complemento || "",
+        },
+        contact: {
+          name: pedidoAlvo.cliente || "Cliente",
+          phone: pedidoAlvo.telefone || "(83) 98800-0000",
+        },
+        payment: "pix",
+        subtotal: totalCentavos - 500,
+        fee: 500,
+        total: totalCentavos,
+        code: pedidoAlvo.codigo_entrega,
+        createdAt: timestampMs - 45 * 60000,
+        history: [
+          { state: "recebido", by: "Cliente", at: timestampMs - 45 * 60000 },
+          { state: "em_preparo", by: "Estabelecimento", at: timestampMs - 35 * 60000 },
+          { state: "pronto", by: "Estabelecimento", at: timestampMs - 20 * 60000 },
+          { state: "em_entrega", by: "Entregador", at: timestampMs - 10 * 60000 },
+          { state: "entregue", by: "Entregador", at: timestampMs, note: "Confirmado com código de 4 dígitos" },
+        ],
+      };
+      dados.orders.push(pedidoGlobal);
+    }
+
+    if (Array.isArray(dados.deliveries)) {
+      const delivery = dados.deliveries.find(
+        (d) => d.orderId === pedidoGlobal.id || d.orderId === pedidoId
+      );
+      if (delivery) {
+        delivery.state = "entregue";
+        delivery.completedAt = timestampMs;
+      }
+    }
+
+    salvarDados();
+    window.dispatchEvent(new Event("storage"));
+  } catch (err) {
+    console.error("Erro ao sincronizar pedido entregue com dados globais:", err);
+  }
+}
+
+/**
+ * RF-ENT-07: Registra o bloqueio da entrega no storage compartilhado (peddi.v1.data)
+ */
+export function sincronizarPedidoBloqueadoComDadosGlobais(pedidoAlvo) {
+  try {
+    const dados = obterDados();
+    if (!dados || !Array.isArray(dados.orders)) return;
+
+    const timestampMs = Date.now();
+    const pedidoId = pedidoAlvo.id;
+    const numLimpo = pedidoId.replace(/\D/g, "");
+
+    const pedidoGlobal = dados.orders.find(
+      (o) =>
+        o.id === pedidoId ||
+        o.id === `PED-${numLimpo}` ||
+        String(o.id) === String(numLimpo)
+    );
+
+    if (pedidoGlobal) {
+      if (!pedidoGlobal.history) pedidoGlobal.history = [];
+      pedidoGlobal.history.push({
+        state: pedidoGlobal.state || "em_entrega",
+        by: "Entregador",
+        at: timestampMs,
+        note: "Entrega bloqueada: 3 tentativas de código incorretas",
+      });
+      salvarDados();
+      window.dispatchEvent(new Event("storage"));
+    }
+  } catch (err) {
+    console.error("Erro ao sincronizar bloqueio com dados globais:", err);
+  }
+}
+
+/**
+ * RF-ENT-07: Reseta as tentativas de código para 3 e desbloqueia o pedido (para fins de teste/suporte)
+ */
+export function resetarTentativasPedido(pedidoId) {
+  const todosPedidos = obterPedidos();
+  const pedidosAtualizados = todosPedidos.map((p) => {
+    if (p.id === pedidoId) {
+      return {
+        ...p,
+        tentativas_restantes: 3,
+        bloqueado: false,
+      };
+    }
+    return p;
+  });
+
+  salvarPedidos(pedidosAtualizados);
+  return { sucesso: true, tentativas_restantes: 3, bloqueado: false };
+}
+
+/**
+ * RF-ENT-05, RF-ENT-06 e RF-ENT-07: Validação por código de 4 dígitos, controle de tentativas e finalização
+ */
+export function validarEConfirmarEntrega(pedidoId, codigoDigitado) {
+  const codigoLimpo = String(codigoDigitado || "").trim();
+
+  const viagem = obterViagemAtual();
+  if (!viagem) {
+    return {
+      sucesso: false,
+      bloqueado: false,
+      erro: "Nenhuma viagem em andamento encontrada.",
+    };
+  }
+
+  const pedidos = viagem.pedidosDetalhados;
+  const indiceAlvo = pedidos.findIndex((p) => p.id === pedidoId);
+
+  if (indiceAlvo === -1) {
+    return {
+      sucesso: false,
+      bloqueado: false,
+      erro: "Pedido não encontrado nesta viagem.",
+    };
+  }
+
+  // RF-ENT-05 & RF-ENT-08: Confirmação na ordem das paradas (ignora já Entregues ou Cancelados)
+  const paradaPendenteAnterior = pedidos
+    .slice(0, indiceAlvo)
+    .find((p) => p.status !== "Entregue" && p.status !== "Cancelado");
+
+  if (paradaPendenteAnterior) {
+    const numeroParadaPendente = pedidos.indexOf(paradaPendenteAnterior) + 1;
+    return {
+      sucesso: false,
+      bloqueado: false,
+      erro: `Você deve concluir a Parada ${numeroParadaPendente} antes de confirmar esta entrega.`,
+    };
+  }
+
+  const pedidoAlvo = pedidos[indiceAlvo];
+  if (pedidoAlvo.status === "Entregue" || pedidoAlvo.status === "Cancelado") {
+    return {
+      sucesso: false,
+      bloqueado: false,
+      erro: `Esta parada já foi ${pedidoAlvo.status === "Entregue" ? "confirmada" : "cancelada"} anteriormente.`,
+    };
+  }
+
+  const tentativasAtuais =
+    typeof pedidoAlvo.tentativas_restantes === "number"
+      ? pedidoAlvo.tentativas_restantes
+      : 3;
+
+  // RF-ENT-07 (Critério 3): Bloqueio se tentativas esgotadas
+  if (pedidoAlvo.bloqueado || tentativasAtuais <= 0) {
+    return {
+      sucesso: false,
+      bloqueado: true,
+      tentativasRestantes: 0,
+      erro: "Limite de 3 tentativas esgotado. Entrega bloqueada! Entre em contato com o estabelecimento.",
+    };
+  }
+
+  // Critérios 1 e 2: deve conter exatamente 4 dígitos numéricos
+  if (!/^\d{4}$/.test(codigoLimpo)) {
+    return {
+      sucesso: false,
+      bloqueado: false,
+      tentativasRestantes: tentativasAtuais,
+      erro: "O código deve ter exatamente 4 dígitos numéricos.",
+    };
+  }
+
+  // RF-ENT-07 (Critérios 1, 2 e 3): Código incorreto mostra erro, decrementa tentativa e bloqueia se chegar a 0
+  if (pedidoAlvo.codigo_entrega && pedidoAlvo.codigo_entrega !== codigoLimpo) {
+    const novasTentativas = Math.max(0, tentativasAtuais - 1);
+    const estaBloqueado = novasTentativas === 0;
+
+    const todosPedidos = obterPedidos();
+    const pedidosAtualizados = todosPedidos.map((p) => {
+      if (p.id === pedidoId) {
+        return {
+          ...p,
+          tentativas_restantes: novasTentativas,
+          bloqueado: estaBloqueado,
+        };
+      }
+      return p;
+    });
+
+    salvarPedidos(pedidosAtualizados);
+
+    if (estaBloqueado) {
+      sincronizarPedidoBloqueadoComDadosGlobais(pedidoAlvo);
+      return {
+        sucesso: false,
+        bloqueado: true,
+        tentativasRestantes: 0,
+        erro: "Limite de 3 tentativas esgotado! Esta entrega foi bloqueada por segurança. Entre em contato com o estabelecimento.",
+      };
+    }
+
+    return {
+      sucesso: false,
+      bloqueado: false,
+      tentativasRestantes: novasTentativas,
+      erro: `Código incorreto! Resta${novasTentativas === 1 ? " apenas" : "m"} ${novasTentativas} tentativa${novasTentativas > 1 ? "s" : ""}. Peça ao cliente para verificar o código.`,
+    };
+  }
+
+  // RF-ENT-06 (Critério 1): Código correto muda o pedido para Entregue e grava a hora
+  const agoraIso = new Date().toISOString();
+  const todosPedidos = obterPedidos();
+  const pedidosAtualizados = todosPedidos.map((p) => {
+    if (p.id === pedidoId) {
+      return {
+        ...p,
+        status: "Entregue",
+        entregue_em: agoraIso,
+      };
+    }
+    return p;
+  });
+
+  salvarPedidos(pedidosAtualizados);
+
+  // RF-ENT-06 (Critério 3): Cliente e empresa veem o pedido como Entregue
+  sincronizarPedidoEntregueComDadosGlobais(pedidoAlvo, agoraIso);
+
+  // RF-ENT-06 & RF-ENT-08 (Critério 2): Progresso da viagem atualizado (todos Entregues ou Cancelados)
+  const viagemAtualizada = obterViagemAtual();
+  const todosConcluidos = viagemAtualizada?.pedidosDetalhados.every(
+    (p) => p.status === "Entregue" || p.status === "Cancelado"
+  );
+
+  return {
+    sucesso: true,
+    bloqueado: false,
+    tentativasRestantes: tentativasAtuais,
+    mensagem: `Entrega do Pedido ${pedidoId} confirmada com sucesso!`,
+    todosEntregues: Boolean(todosConcluidos),
+    todosConcluidos: Boolean(todosConcluidos),
+    pedido: pedidosAtualizados.find((p) => p.id === pedidoId),
+  };
 }
