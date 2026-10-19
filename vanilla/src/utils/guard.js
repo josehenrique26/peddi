@@ -8,6 +8,12 @@ export function exigirEmpresa() {
   return sessao;
 }
 
+// Telas do entregador: sem perfil "entregador", volta à tela inicial. Garante um entregador válido na sessão.
+export function exigirEntregador() {
+  if (lerSessao().role !== "entregador") { navegar(rotas.inicio()); return null; }
+  return normalizarSessao();
+}
+
 // As telas do cliente são abertas por link, sem bloqueio: só garante o perfil "cliente" e um cliente de demonstração.
 export function entrarComoCliente() {
   const sessao = normalizarSessao();

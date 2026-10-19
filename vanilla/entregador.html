@@ -1,10 +1,10 @@
 <!doctype html>
-<!-- entregador.html — Painel do Entregador: Pedidos Prontos, Seleção e Viagem -->
+<!-- entregador.html — Pedidos prontos para o entregador montar a viagem. -->
 <html lang="pt-BR">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>Peddi — Entregador</title>
+    <title>Entregador · Peddi</title>
     <link rel="icon" href="/img/logo.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -12,28 +12,20 @@
       href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
+    <link rel="stylesheet" href="/src/styles/main.css" />
+    <link rel="stylesheet" href="/src/styles/pages/courier.css" />
   </head>
   <body>
-    <div id="app"></div>
-    <script type="module">
-      import { renderCourierAvailable } from "./src/pages/courier-available.js";
-      import { renderCourierTrip } from "./src/pages/courier-trip.js";
-      import { obterViagemAtual } from "./src/services/orders.js";
+    <a class="sr" href="#main">Ir para o conteúdo</a>
+    <div class="demo" id="demo" role="region" aria-label="Controles de demonstração"></div>
 
-      function rotearEntregador() {
-        const root = document.getElementById("app");
-        const viagem = obterViagemAtual();
+    <div class="cr">
+      <!-- Topo e navegação inferior: preenchidos por src/components/courier-shell.js -->
+      <header class="cr-head" id="cr-topo"></header>
+      <main class="cr-main" id="main"></main>
+      <nav class="cr-nav" id="cr-nav" aria-label="Navegação do entregador"></nav>
+    </div>
 
-        // RF-ENT-04: Critério 5 - Reabrir o sistema retoma a viagem atual
-        if (location.hash === "#/courier/trip" || (viagem && location.hash !== "#/courier/available")) {
-          renderCourierTrip(root);
-        } else {
-          renderCourierAvailable(root);
-        }
-      }
-
-      window.addEventListener("hashchange", rotearEntregador);
-      rotearEntregador();
-    </script>
+    <script type="module" src="/src/pages/courier-available.js"></script>
   </body>
 </html>

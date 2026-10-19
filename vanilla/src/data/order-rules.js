@@ -21,3 +21,13 @@ export const PROXIMA_ETAPA = { recebido: "em_preparo", em_preparo: "pronto" };
 
 // A empresa só rejeita um pedido que acabou de chegar.
 export const ESTADOS_REJEITAVEIS = ["recebido"];
+
+// Entregador: pedidos por viagem, tentativas de código por entrega e motivos de entrega não concluída.
+export const MAX_PEDIDOS_VIAGEM = 3;
+export const MAX_TENTATIVAS = 3;
+export const MOTIVOS_FALHA = [
+  { id: "cliente_ausente", rotulo: "Cliente ausente" },
+  { id: "endereco_nao_encontrado", rotulo: "Endereço não encontrado" },
+  { id: "codigo_perdido", rotulo: "Cliente sem o código de confirmação" },
+  { id: "outro", rotulo: "Outro motivo" },
+];
