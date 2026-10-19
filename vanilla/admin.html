@@ -3,89 +3,137 @@
 <html lang="pt-BR">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
     <title>Dashboard · Peddi</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="icon" href="/img/logo.svg" />
     <link
       href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
+    <link rel="stylesheet" href="/src/styles/main.css" />
+    <link rel="stylesheet" href="/src/styles/pages/admin.css" />
   </head>
   <body>
     <a class="sr" href="#main">Ir para o conteúdo</a>
-    <div class="demo" id="demo" role="region" aria-label="Controles de demonstração"></div>
+    <div
+      class="demo"
+      id="demo"
+      role="region"
+      aria-label="Controles de demonstração"
+    ></div>
 
     <div class="adm">
       <!-- Menu lateral: preenchido por src/components/admin-shell.js -->
-      <aside class="side" id="menu-lateral" aria-label="Navegação do estabelecimento"></aside>
+      <aside
+        class="side"
+        id="menu-lateral"
+        aria-label="Navegação do estabelecimento"
+      ></aside>
       <div class="scrim" id="scrim"></div>
 
       <div class="adm-main" id="main">
         <div class="adm-top">
-          <button class="icon-btn burger" id="abrir-menu" type="button" aria-label="Abrir menu" aria-expanded="false"><span data-icon="menu" data-size="20"></span></button>
+          <button
+            class="icon-btn burger"
+            id="abrir-menu"
+            type="button"
+            aria-label="Abrir menu"
+            aria-expanded="false"
+          >
+            <span data-icon="menu" data-size="20"></span>
+          </button>
           <h1 class="grow">Dashboard</h1>
           <!-- Atalhos fixos direto no HTML -->
           <div class="atalhos">
-            <a class="btn btn-primary btn-sm" href="admin-cardapio.html"><span data-icon="plus" data-size="15"></span> Novo produto</a>
-            <a class="btn btn-ghost btn-sm" href="admin-pedidos.html"><span data-icon="receipt" data-size="15"></span> Pedidos</a>
-            <a class="btn btn-ghost btn-sm" href="admin-entregadores.html"><span data-icon="bike" data-size="15"></span> Entregadores</a>
+            <a class="btn btn-primary btn-sm" href="admin-cardapio.html"
+              ><span data-icon="plus" data-size="15"></span> Novo produto</a
+            >
+            <a class="btn btn-ghost btn-sm" href="admin-pedidos.html"
+              ><span data-icon="receipt" data-size="15"></span> Pedidos</a
+            >
+            <a class="btn btn-ghost btn-sm" href="admin-entregadores.html"
+              ><span data-icon="bike" data-size="15"></span> Entregadores</a
+            >
           </div>
         </div>
 
         <!-- Aviso fixo: o JS só mostra ou esconde (atributo hidden) -->
         <div class="banner bn-err" id="aviso-inativa" role="status" hidden>
           <span data-icon="ban" data-size="20"></span>
-          <div><strong>Empresa inativa.</strong> Novos pedidos estão bloqueados. Reative em <a href="admin-config.html">Configurações</a>.</div>
+          <div>
+            <strong>Empresa inativa.</strong> Novos pedidos estão bloqueados.
+            Reative em <a href="admin-config.html">Configurações</a>.
+          </div>
         </div>
 
         <!-- Cards do dia -->
         <section aria-labelledby="h-cards">
           <h2 class="sr" id="h-cards">Resumo do dia</h2>
           <div class="kpis" id="kpis">
-            
             <a class="kpi money" href="admin-pedidos.html">
-              <span class="l"><span data-icon="bag" data-size="16"></span> Faturamento do dia</span>
+              <span class="l"
+                ><span data-icon="bag" data-size="16"></span> Faturamento do
+                dia</span
+              >
               <span class="v" data-kpi="faturamento">R$ 0,00</span>
-              <span class="muted small" data-kpi="faturamento-legenda">A receber: R$ 0,00</span>
+              <span class="muted small" data-kpi="faturamento-legenda"
+                >A receber: R$ 0,00</span
+              >
             </a>
 
             <a class="kpi" href="admin-pedidos.html">
-              <span class="l"><span data-icon="receipt" data-size="16"></span> Pedidos feitos</span>
+              <span class="l"
+                ><span data-icon="receipt" data-size="16"></span> Pedidos
+                feitos</span
+              >
               <span class="v" data-kpi="feitos">0</span>
               <span class="muted small">hoje</span>
             </a>
 
             <a class="kpi" href="admin-pedidos.html">
-              <span class="l"><span data-icon="check" data-size="16"></span> Entregues</span>
+              <span class="l"
+                ><span data-icon="check" data-size="16"></span> Entregues</span
+              >
               <span class="v" data-kpi="entregues">0</span>
               <span class="muted small">hoje</span>
             </a>
 
             <a class="kpi" href="admin-pedidos.html">
-              <span class="l"><span data-icon="inbox" data-size="16"></span> Recebidos</span>
+              <span class="l"
+                ><span data-icon="inbox" data-size="16"></span> Recebidos</span
+              >
               <span class="v" data-kpi="recebidos">0</span>
               <span class="muted small">aguardando aceite</span>
             </a>
 
             <a class="kpi" href="admin-pedidos.html">
-              <span class="l"><span data-icon="clock" data-size="16"></span> Em preparo</span>
+              <span class="l"
+                ><span data-icon="clock" data-size="16"></span> Em preparo</span
+              >
               <span class="v" data-kpi="preparo">0</span>
               <span class="muted small">na cozinha</span>
             </a>
 
             <a class="kpi" href="admin-pedidos.html">
-              <span class="l"><span data-icon="checkc" data-size="16"></span> Prontos</span>
+              <span class="l"
+                ><span data-icon="checkc" data-size="16"></span> Prontos</span
+              >
               <span class="v" data-kpi="prontos">0</span>
               <span class="muted small">aguardando entregador</span>
             </a>
 
             <a class="kpi" href="admin-pedidos.html">
-              <span class="l"><span data-icon="bike" data-size="16"></span> Em entrega</span>
+              <span class="l"
+                ><span data-icon="bike" data-size="16"></span> Em entrega</span
+              >
               <span class="v" data-kpi="entrega">0</span>
               <span class="muted small">a caminho</span>
             </a>
-
           </div>
         </section>
 
@@ -98,14 +146,38 @@
             </div>
             <div class="chart-ctrl">
               <!-- Botões fixos com atributos de dados (data-periodo) para o JS identificar -->
-              <div class="seg" role="group" aria-label="Período do gráfico" id="periodo">
-                <button type="button" data-periodo="dia" aria-pressed="true">Hoje</button>
-                <button type="button" data-periodo="semana" aria-pressed="false">7 dias</button>
-                <button type="button" data-periodo="mes" aria-pressed="false">30 dias</button>
+              <div
+                class="seg"
+                role="group"
+                aria-label="Período do gráfico"
+                id="periodo"
+              >
+                <button type="button" data-periodo="dia" aria-pressed="true">
+                  Hoje
+                </button>
+                <button
+                  type="button"
+                  data-periodo="semana"
+                  aria-pressed="false"
+                >
+                  7 dias
+                </button>
+                <button type="button" data-periodo="mes" aria-pressed="false">
+                  30 dias
+                </button>
               </div>
-              <div class="seg" role="group" aria-label="Forma de exibição" id="visao">
-                <button type="button" data-visao="grafico" aria-pressed="true">Gráfico</button>
-                <button type="button" data-visao="tabela" aria-pressed="false">Tabela</button>
+              <div
+                class="seg"
+                role="group"
+                aria-label="Forma de exibição"
+                id="visao"
+              >
+                <button type="button" data-visao="grafico" aria-pressed="true">
+                  Gráfico
+                </button>
+                <button type="button" data-visao="tabela" aria-pressed="false">
+                  Tabela
+                </button>
               </div>
             </div>
           </div>
@@ -113,7 +185,12 @@
           <div class="chart-table-wrap" id="tabela" hidden>
             <table class="tbl chart-table">
               <caption class="sr" id="tabela-legenda"></caption>
-              <thead><tr><th scope="col">Intervalo</th><th scope="col">Pedidos</th></tr></thead>
+              <thead>
+                <tr>
+                  <th scope="col">Intervalo</th>
+                  <th scope="col">Pedidos</th>
+                </tr>
+              </thead>
               <tbody id="tabela-corpo"></tbody>
             </table>
           </div>
@@ -123,7 +200,9 @@
         <section class="panel" aria-labelledby="h-atividade">
           <div class="panel-hd">
             <h3 id="h-atividade">Atividade recente</h3>
-            <a class="small" id="ver-pedidos" href="admin-pedidos.html">Ver pedidos</a>
+            <a class="small" id="ver-pedidos" href="admin-pedidos.html"
+              >Ver pedidos</a
+            >
           </div>
           <div id="atividade"></div>
         </section>
