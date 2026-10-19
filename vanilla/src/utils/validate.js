@@ -1,4 +1,6 @@
-// src/utils/validate.js — máscaras e validação do checkout (funções puras).
+// src/utils/validate.js — máscaras e validação do checkout e das configurações da empresa (funções puras).
+import { lerPreco } from "./format.js";
+
 export const apenasDigitos = (texto) => String(texto ?? "").replace(/\D/g, "");
 
 // "58000000" -> "58000-000"
@@ -27,5 +29,23 @@ export function validarCheckout({ name, phone, cep, street, district }) {
   if (cep && !CEP.test(apenasDigitos(cep))) erros.cep = "O CEP deve ter 8 números.";
   if (String(street).trim().length < 5) erros.street = "Informe a rua e o número.";
   if (String(district).trim().length < 2) erros.district = "Informe o bairro.";
+  return erros;
+}
+
+// ---- configurações da empresa
+const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/; // letras minúsculas, números e hífen: "forno-da-vila"
+const CODIGO = /^[A-Z0-9]{4,10}$/;       // "VILA482"
+
+export const normalizarSlug = (texto) => String(texto ?? "").trim().toLowerCase();
+export const normalizarCodigo = (texto) => String(texto ?? "").trim().toUpperCase();
+
+// Devolve { campo: "mensagem" }. Objeto vazio = tudo certo. (Slug e código repetidos são checados em services/companies.js.)
+export function validarEmpresa({ name, address, slug, code, fee }) {
+  const erros = {};
+  if (String(name).trim().length < 2) erros.name = "Informe o nome do estabelecimento.";
+  if (String(address).trim().length < 5) erros.address = "Informe o endereço.";
+  if (!SLUG.test(normalizarSlug(slug)) || normalizarSlug(slug).length < 3) erros.slug = "Use ao menos 3 caracteres: letras minúsculas, números e hífen.";
+  if (!CODIGO.test(normalizarCodigo(code))) erros.code = "Use de 4 a 10 letras ou números, sem espaços.";
+  if (Number.isNaN(lerPreco(fee))) erros.fee = "Informe um valor válido, como 6,00 (use 0 para entrega grátis).";
   return erros;
 }
