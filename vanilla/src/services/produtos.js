@@ -1,141 +1,98 @@
-const btnAdicionar = document.querySelector("#btn-adicionar");
-const formAdd = document.querySelector("#form-add");
+import { obterDados, salvarDados, lerSessao } from "./storage.js";
+import { obterEmpresa } from "./companies.js";
 
-const imagem = document.querySelector("#img-produto");
-const nomeProduto = document.querySelector("#nome-produto");
-const descricao = document.querySelector("#descricao");
-const preco = document.querySelector("#preco");
+const falha = (erro) => ({ ok: false, erro });
+const MAX_IMAGEM_BYTES = 1_500_000;
 
-const btnEnviar = document.querySelector("#btn-enviar");
-const cardapio = document.querySelector("#cardapio");
-
-let produtos = JSON.parse(localStorage.getItem("produtos")) || [];
-let produtoEditando = null;
-
-function salvarProdutos() {
-    localStorage.setItem("produtos", JSON.stringify(produtos));
+function empresaAdministrada(empresaId) {
+    const sessao = lerSessao();
+    if (sessao.role !== "admin") return { erro: "Acesso restrito ao perfil do estabelecimento." };
+    if (!empresaId || sessao.companyId !== empresaId) return { erro: "O estabelecimento da sessão não corresponde a esta operação." };
+    if (!obterEmpresa(empresaId)) return { erro: "Estabelecimento não encontrado." };
+    return {};
 }
 
-function converterImagem(arquivo) {
-    return new Promise((resolve, reject) => {
-        const leitor = new FileReader();
+function validarCampos(campos) {
+    const nome = String(campos.name ?? "").trim();
+    const categoria = String(campos.category ?? "").trim();
+    if (!nome) return "Informe o nome do produto.";
+    if (nome.length > 100) return "O nome deve ter até 100 caracteres.";
+    if (!categoria) return "Informe uma categoria.";
+    if (categoria.length > 50) return "A categoria deve ter até 50 caracteres.";
+    if (!Number.isInteger(campos.price) || campos.price <= 0) return "Informe um preço válido maior que zero.";
+    if (String(campos.description ?? "").length > 240) return "A descrição deve ter até 240 caracteres.";
+    const src = campos.img?.src;
+    if (src) {
+        const imagem = /^data:image\/(?:png|jpeg|webp);base64,([A-Za-z0-9+/]+=*)$/.exec(src);
+        if (!imagem || Math.floor(imagem[1].length * 3 / 4) > MAX_IMAGEM_BYTES) return "Use uma imagem PNG, JPEG ou WebP de até 1,5 MB.";
+    }
+    return "";
+}
 
-        leitor.onload = () => resolve(leitor.result);
-        leitor.onerror = () => reject(leitor.error);
+function gravarProdutos(dados, produtos, seq = dados.seq) {
+    const produtosAnteriores = dados.products;
+    const seqAnterior = dados.seq;
+    dados.products = produtos;
+    dados.seq = seq;
+    if (salvarDados()) return { ok: true };
+    dados.products = produtosAnteriores;
+    dados.seq = seqAnterior;
+    return falha("Não foi possível gravar no armazenamento deste navegador.");
+}
 
-        leitor.readAsDataURL(arquivo);
+export function listarProdutosEmpresa(empresaId) {
+    const acesso = empresaAdministrada(empresaId);
+    if (acesso.erro) return falha(acesso.erro);
+    const produtos = obterDados().products;
+    if (!Array.isArray(produtos)) return falha("A coleção de produtos está indisponível.");
+    return { ok: true, produtos: produtos.filter((produto) => produto.companyId === empresaId) };
+}
+
+export function salvarProduto(empresaId, campos, produtoId = null) {
+    const acesso = empresaAdministrada(empresaId);
+    if (acesso.erro) return falha(acesso.erro);
+    const erro = validarCampos(campos);
+    if (erro) return falha(erro);
+
+    const dados = obterDados();
+    const produtos = Array.isArray(dados.products) ? [...dados.products] : [];
+    if (produtoId) {
+        const indice = produtos.findIndex((produto) => produto.id === produtoId && produto.companyId === empresaId);
+        if (indice < 0) return falha("Produto não encontrado neste estabelecimento.");
+        produtos[indice] = {
+            ...produtos[indice], name: campos.name.trim(), description: String(campos.description ?? "").trim(),
+            category: campos.category.trim(), price: campos.price,
+            img: campos.img ?? produtos[indice].img ?? { emoji: "🍽️" },
+        };
+        return gravarProdutos(dados, produtos);
+    }
+
+    const seq = { ...dados.seq };
+    let id;
+    do { id = `p${seq.product++}`; } while (produtos.some((produto) => produto.id === id));
+    produtos.push({
+        id, companyId: empresaId, name: campos.name.trim(), description: String(campos.description ?? "").trim(),
+        category: campos.category.trim(), price: campos.price, img: campos.img ?? { emoji: "🍽️" }, available: true,
     });
+    return { ...gravarProdutos(dados, produtos, seq), id };
 }
 
-btnAdicionar.addEventListener("click", () => {
-    formAdd.reset();
-    imagem.required = true;
-    produtoEditando = null;
-    btnEnviar.textContent = "Cadastrar produto";
-
-    formAdd.classList.add("ativo");
-});
-
-function mostrarProdutos() {
-    cardapio.innerHTML = "";
-
-    produtos.forEach((produto) => {
-        const novoLi = document.createElement("li");
-
-        novoLi.innerHTML = `
-            <img src="${produto.imagem}" alt="${produto.nome}">
-            <h2>${produto.nome}</h2>
-            <h3>${produto.descricao}</h3>
-            <p>R$ ${Number(produto.preco).toFixed(2)}</p>
-            <button type="button" class="btn-editar">✏️ Editar</button>
-        `;
-
-        cardapio.appendChild(novoLi);
-
-        const btnEditar = novoLi.querySelector(".btn-editar");
-
-        btnEditar.addEventListener("click", () => {
-            editarProduto(produto);
-        });
-    });
+export function definirDisponibilidadeProduto(empresaId, produtoId, available) {
+    const acesso = empresaAdministrada(empresaId);
+    if (acesso.erro) return falha(acesso.erro);
+    const dados = obterDados();
+    const produtos = Array.isArray(dados.products) ? [...dados.products] : [];
+    const indice = produtos.findIndex((produto) => produto.id === produtoId && produto.companyId === empresaId);
+    if (indice < 0) return falha("Produto não encontrado neste estabelecimento.");
+    produtos[indice] = { ...produtos[indice], available: Boolean(available) };
+    return gravarProdutos(dados, produtos);
 }
 
-function editarProduto(produto) {
-    produtoEditando = produto;
-
-    imagem.required = false;
-    nomeProduto.value = produto.nome;
-    descricao.value = produto.descricao;
-    preco.value = Number(produto.preco).toFixed(2);
-
-    formAdd.classList.add("ativo");
-    btnEnviar.textContent = "Salvar alterações";
+export function excluirProduto(empresaId, produtoId) {
+    const acesso = empresaAdministrada(empresaId);
+    if (acesso.erro) return falha(acesso.erro);
+    const dados = obterDados();
+    const produtos = Array.isArray(dados.products) ? dados.products : [];
+    if (!produtos.some((produto) => produto.id === produtoId && produto.companyId === empresaId)) return falha("Produto não encontrado neste estabelecimento.");
+    return gravarProdutos(dados, produtos.filter((produto) => produto.id !== produtoId));
 }
-
-formAdd.addEventListener("submit", async (evento) => {
-    evento.preventDefault();
-
-    const nome = nomeProduto.value.trim();
-    const textoDescricao = descricao.value.trim();
-    const valorPreco = Number(preco.value);
-    const arquivoImagem = imagem.files[0];
-
-    if (
-        nome === "" ||
-        preco.value.trim() === "" ||
-        !Number.isFinite(valorPreco) ||
-        valorPreco <= 0
-    ) {
-        alert("Preencha o nome e um preço válido.");
-        return;
-    }
-
-    if (produtoEditando === null && !arquivoImagem) {
-        alert("Selecione uma imagem.");
-        return;
-    }
-
-    btnEnviar.disabled = true;
-
-    try {
-        let imagemProduto = produtoEditando?.imagem || "";
-
-        if (arquivoImagem) {
-            imagemProduto = await converterImagem(arquivoImagem);
-        }
-
-        if (produtoEditando !== null) {
-            produtoEditando.nome = nome;
-            produtoEditando.descricao = textoDescricao;
-            produtoEditando.preco = valorPreco;
-            produtoEditando.imagem = imagemProduto;
-        } else {
-            const novoProduto = {
-                imagem: imagemProduto,
-                nome: nome,
-                descricao: textoDescricao,
-                preco: valorPreco
-            };
-
-            produtos.push(novoProduto);
-        }
-
-        salvarProdutos();
-
-        mostrarProdutos();
-
-        formAdd.reset();
-        imagem.required = true;
-        formAdd.classList.remove("ativo");
-
-        produtoEditando = null;
-        btnEnviar.textContent = "Cadastrar produto";
-    } catch (erro) {
-        alert("Não foi possível salvar. A imagem pode ser muito grande.");
-        console.error(erro);
-    } finally {
-        btnEnviar.disabled = false;
-    }
-});
-
-mostrarProdutos();

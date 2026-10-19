@@ -11,8 +11,8 @@ function ler(chave) {
   catch { armazenamentoOk = false; return null; }
 }
 function gravar(chave, valor) {
-  try { localStorage.setItem(chave, valor); }
-  catch { armazenamentoOk = false; }
+  try { localStorage.setItem(chave, valor); return true; }
+  catch { armazenamentoOk = false; return false; }
 }
 function remover(chave) {
   try { localStorage.removeItem(chave); }
