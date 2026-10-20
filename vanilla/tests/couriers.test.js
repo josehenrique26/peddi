@@ -10,6 +10,28 @@ globalThis.localStorage = {
 
 const storage = await import("../src/services/storage.js");
 const courierService = await import("../src/services/couriers.js");
+const courierOrders = await import("../src/services/courier-orders.js");
+
+function comBytesRandomizados(valores, executar) {
+  const descritorOriginal = Object.getOwnPropertyDescriptor(globalThis, "crypto");
+  let chamada = 0;
+  Object.defineProperty(globalThis, "crypto", {
+    configurable: true,
+    value: {
+      getRandomValues(bytes) {
+        bytes.fill(valores[chamada] ?? 0);
+        chamada += 1;
+        return bytes;
+      },
+    },
+  });
+  try {
+    executar(() => chamada);
+  } finally {
+    if (descritorOriginal) Object.defineProperty(globalThis, "crypto", descritorOriginal);
+    else delete globalThis.crypto;
+  }
+}
 
 function iniciarComoAdmin(companyId = "co_forno") {
   armazenamento.clear();
@@ -90,4 +112,200 @@ test("códigos antigos de entregador são normalizados sem perda do histórico",
   assert.ok(carregados.couriers.every((courier) => courier.code.length === 8));
   assert.equal(JSON.stringify(carregados.trips), viagensAntes);
   assert.ok(JSON.parse(armazenamento.get("peddi.v1.data")).couriers.every((courier) => courier.code.length === 8));
+});
+
+test("RF-EMP-11 gera código de conexão exclusivo e o persiste na empresa autorizada", () => {
+  iniciarComoAdmin();
+  const dados = storage.obterDados();
+  dados.companies.find((company) => company.id === "co_forno").code = "00000000";
+  dados.companies.find((company) => company.id === "co_burger").connectionCode = "11111111";
+  let numeroDeChamadas;
+
+  comBytesRandomizados([0, 1, 2], (chamadas) => {
+    const resultado = courierService.gerarCodigoConexao("co_forno");
+    assert.equal(resultado.ok, true, resultado.erro);
+    assert.match(resultado.codigo, /^[A-Z0-9]{8}$/);
+    assert.equal(resultado.codigo, "22222222");
+    assert.equal(dados.companies.find((company) => company.id === "co_forno").connectionCode, resultado.codigo);
+    assert.equal(dados.companies.find((company) => company.id === "co_burger").connectionCode, "11111111");
+    numeroDeChamadas = chamadas();
+  });
+  assert.equal(numeroDeChamadas, 3);
+  assert.equal(dados.companies.find((company) => company.id === "co_forno").code, "00000000");
+
+  storage.carregarDados();
+  assert.equal(storage.obterDados().companies.find((company) => company.id === "co_forno").connectionCode, "22222222");
+});
+
+test("RF-EMP-11 restringe geração à empresa da sessão e devolve novo código ao renovar", () => {
+  iniciarComoAdmin("co_forno");
+  comBytesRandomizados([2, 3], () => {
+    const primeiro = courierService.gerarCodigoConexao("co_forno");
+    assert.equal(primeiro.ok, true, primeiro.erro);
+
+    const acessoNegado = courierService.gerarCodigoConexao("co_burger");
+    assert.equal(acessoNegado.ok, false);
+
+    const renovado = courierService.gerarCodigoConexao("co_forno");
+    assert.equal(renovado.ok, true, renovado.erro);
+    assert.notEqual(renovado.codigo, primeiro.codigo);
+    assert.equal(storage.obterDados().companies.find((company) => company.id === "co_forno").connectionCode, renovado.codigo);
+    assert.notEqual(storage.obterDados().companies.find((company) => company.id === "co_forno").connectionCode, primeiro.codigo);
+  });
+});
+
+test("RF-EMP-11 informa falha de armazenamento e preserva código anterior", () => {
+  iniciarComoAdmin();
+  const empresa = storage.obterDados().companies.find((company) => company.id === "co_forno");
+  empresa.connectionCode = "ABCDEFGH";
+  storage.salvarDados();
+  const setItemOriginal = globalThis.localStorage.setItem;
+  globalThis.localStorage.setItem = (chave, valor) => {
+    if (chave === "peddi.v1.data") throw new Error("quota exceeded");
+    setItemOriginal(chave, valor);
+  };
+
+  try {
+    comBytesRandomizados([3], () => {
+      const resultado = courierService.gerarCodigoConexao("co_forno");
+      assert.equal(resultado.ok, false);
+      assert.equal(empresa.connectionCode, "ABCDEFGH");
+    });
+  } finally {
+    globalThis.localStorage.setItem = setItemOriginal;
+  }
+});
+
+test("RF-EMP-11 informa falha se a fonte segura de aleatoriedade não existir", () => {
+  iniciarComoAdmin();
+  const descritorOriginal = Object.getOwnPropertyDescriptor(globalThis, "crypto");
+  Object.defineProperty(globalThis, "crypto", { configurable: true, value: undefined });
+  try {
+    const resultado = courierService.gerarCodigoConexao("co_forno");
+    assert.equal(resultado.ok, false);
+    assert.match(resultado.erro, /geração aleatória segura/);
+    assert.equal(storage.obterDados().companies.find((company) => company.id === "co_forno").connectionCode, undefined);
+  } finally {
+    if (descritorOriginal) Object.defineProperty(globalThis, "crypto", descritorOriginal);
+    else delete globalThis.crypto;
+  }
+});
+
+test("RF-EMP-11 para após 20 colisões sem substituir o código vigente", () => {
+  iniciarComoAdmin();
+  const empresa = storage.obterDados().companies.find((company) => company.id === "co_forno");
+  storage.obterDados().companies.find((company) => company.id === "co_burger").connectionCode = "11111111";
+  empresa.connectionCode = "ABCDEFGH";
+  const descritorOriginal = Object.getOwnPropertyDescriptor(globalThis, "crypto");
+  let chamadas = 0;
+  Object.defineProperty(globalThis, "crypto", {
+    configurable: true,
+    value: {
+      getRandomValues(bytes) {
+        bytes.fill(1);
+        chamadas += 1;
+        return bytes;
+      },
+    },
+  });
+  try {
+    const resultado = courierService.gerarCodigoConexao("co_forno");
+    assert.equal(resultado.ok, false);
+    assert.match(resultado.erro, /código exclusivo/);
+    assert.equal(chamadas, 20);
+    assert.equal(empresa.connectionCode, "ABCDEFGH");
+  } finally {
+    if (descritorOriginal) Object.defineProperty(globalThis, "crypto", descritorOriginal);
+    else delete globalThis.crypto;
+  }
+});
+
+test("RF-ENT-10 confirma entregador pelo telefone e código de conexão da empresa", () => {
+  iniciarComoAdmin();
+  const empresa = storage.obterDados().companies.find((company) => company.id === "co_forno");
+  empresa.connectionCode = "FORNO123";
+  storage.gravarSessao({ role: "entregador", companyId: "co_burger", courierId: "ct_4" });
+
+  const resultado = courierOrders.confirmarIdentidadeEntregador("83 98800-0012", "forno123");
+
+  assert.equal(resultado.ok, true, resultado.erro);
+  assert.equal(resultado.entregador.id, "ct_2");
+  assert.equal(storage.lerSessao().companyId, "co_forno");
+  assert.equal(storage.lerSessao().courierId, "ct_2");
+  assert.equal(courierOrders.identidadeEntregadorConfirmada("ct_2"), true);
+  assert.equal(courierOrders.identidadeEntregadorConfirmada("ct_1"), false);
+});
+
+test("RF-ENT-10 rejeita dados incorretos, entregador inativo e código não gerado", () => {
+  iniciarComoAdmin();
+  storage.gravarSessao({ role: "entregador", companyId: "co_forno", courierId: "ct_1" });
+
+  assert.equal(courierOrders.confirmarIdentidadeEntregador("83988000011", "FORNO123").ok, false);
+  storage.obterDados().companies.find((company) => company.id === "co_forno").connectionCode = "FORNO123";
+  assert.equal(courierOrders.confirmarIdentidadeEntregador("83988000011", "WRONG123").ok, false);
+  assert.equal(courierOrders.confirmarIdentidadeEntregador("83988000013", "FORNO123").ok, false);
+  assert.equal(courierOrders.identidadeEntregadorConfirmada("ct_1"), false);
+});
+
+test("RF-ENT-10 bloqueia novas viagens até confirmar e invalida confirmação ao renovar código", () => {
+  iniciarComoAdmin();
+  const dados = storage.obterDados();
+  dados.companies.find((company) => company.id === "co_forno").connectionCode = "FORNO123";
+  storage.gravarSessao({ role: "entregador", companyId: "co_forno", courierId: "ct_2" });
+  const pedidoPronto = courierOrders.pedidosProntos("co_forno")[0];
+
+  assert.equal(courierOrders.criarViagem("ct_2", [pedidoPronto.id]).ok, false);
+  assert.equal(courierOrders.confirmarIdentidadeEntregador("83988000012", "FORNO123").ok, true);
+  assert.equal(courierOrders.criarViagem("ct_2", [pedidoPronto.id]).ok, true);
+
+  const confirmacao = storage.lerSessao().courierConfirmation;
+  storage.gravarSessao({ role: "admin", companyId: "co_forno", customerId: "cu_1", courierId: "ct_1" });
+  comBytesRandomizados([0], () => {
+    assert.equal(courierService.gerarCodigoConexao("co_forno").ok, true);
+  });
+  storage.gravarSessao({
+    role: "entregador",
+    companyId: "co_forno",
+    courierId: "ct_2",
+    courierConfirmation: confirmacao,
+  });
+  assert.equal(courierOrders.identidadeEntregadorConfirmada("ct_2"), false);
+});
+
+test("integração: gera código, conecta entregador e persiste associação sem perder dados", () => {
+  iniciarComoAdmin("co_forno");
+  const dadosIniciais = storage.obterDados();
+  const pedidosAntes = structuredClone(dadosIniciais.orders);
+  const viagensAntes = structuredClone(dadosIniciais.trips);
+  const entregasAntes = structuredClone(dadosIniciais.deliveries);
+
+  let codigo;
+  comBytesRandomizados([0], () => {
+    const geracao = courierService.gerarCodigoConexao("co_forno");
+    assert.equal(geracao.ok, true, geracao.erro);
+    codigo = geracao.codigo;
+  });
+
+  storage.gravarSessao({ role: "entregador", companyId: "co_forno", customerId: "cu_1", courierId: "ct_1" });
+  const conexao = courierOrders.confirmarIdentidadeEntregador("83988000012", codigo);
+  assert.equal(conexao.ok, true, conexao.erro);
+  assert.equal(conexao.entregador.id, "ct_2");
+
+  const pedidoPronto = courierOrders.pedidosProntos("co_forno")[0];
+  const viagem = courierOrders.criarViagem("ct_2", [pedidoPronto.id]);
+  assert.equal(viagem.ok, true, viagem.erro);
+
+  // [INTEGRAÇÃO] Recarregar força a leitura do armazenamento, validando a associação persistida.
+  storage.carregarDados();
+  const recarregados = storage.obterDados();
+  assert.equal(recarregados.companies.find((company) => company.id === "co_forno").connectionCode, codigo);
+  assert.equal(courierOrders.entregadorAtual().id, "ct_2");
+  assert.equal(courierOrders.identidadeEntregadorConfirmada("ct_2"), true);
+  assert.ok(recarregados.trips.some((trip) =>
+    trip.id === viagem.id && trip.courierId === "ct_2" && trip.companyId === "co_forno"));
+  assert.deepEqual(recarregados.orders, pedidosAntes);
+  assert.deepEqual(recarregados.trips.filter((trip) =>
+    viagensAntes.some((anterior) => anterior.id === trip.id)), viagensAntes);
+  assert.deepEqual(recarregados.deliveries.filter((delivery) =>
+    entregasAntes.some((anterior) => anterior.id === delivery.id)), entregasAntes);
 });

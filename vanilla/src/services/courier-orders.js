@@ -1,9 +1,10 @@
 // src/services/courier-orders.js — o que o ENTREGADOR pode fazer: montar viagem, retirar e confirmar entregas.
 // Usa os mesmos dados do cliente e da empresa (dados.orders, dados.trips, dados.deliveries):
 // o que o entregador faz aparece na hora no quadro da empresa e no acompanhamento do cliente.
-import { obterDados, salvarDados, lerSessao } from "./storage.js";
+import { obterDados, salvarDados, lerSessao, gravarSessao } from "./storage.js";
 import { ESTADOS } from "../data/order-states.js";
 import { MAX_PEDIDOS_VIAGEM, MAX_TENTATIVAS, MOTIVOS_FALHA } from "../data/order-rules.js";
+import { apenasDigitos, normalizarCodigo } from "../utils/validate.js";
 
 const falha = (erro) => ({ ok: false, erro });
 
@@ -15,6 +16,69 @@ export const entregadorAtual = () => obterDados().couriers.find((c) => c.id === 
 export const obterViagem = (id) => obterDados().trips.find((v) => v.id === id) ?? null;
 export const obterPedido = (id) => obterDados().orders.find((p) => p.id === id) ?? null;
 export const entregasDaViagem = (viagemId) => obterDados().deliveries.filter((e) => e.tripId === viagemId);
+
+// [RF-ENT-10] O código localiza a empresa e o telefone identifica o cadastro do entregador nela.
+export function confirmarIdentidadeEntregador(telefone, codigoConexao) {
+  const sessao = lerSessao();
+  if (sessao.role !== "entregador") return falha("A confirmação está disponível apenas no perfil do entregador.");
+
+  const telefoneDigitos = apenasDigitos(telefone);
+  if (!/^\d{10,11}$/.test(telefoneDigitos)) {
+    return falha("Informe um telefone válido com DDD.");
+  }
+
+  const codigo = normalizarCodigo(codigoConexao);
+  if (!/^[A-Z0-9]{8}$/.test(codigo)) {
+    return falha("Informe o código de conexão de 8 caracteres fornecido pela empresa.");
+  }
+
+  const empresas = obterDados().companies.filter((empresa) =>
+    normalizarCodigo(empresa.connectionCode) === codigo);
+  if (empresas.length !== 1) return falha("Telefone ou código de conexão não conferem.");
+
+  const empresa = empresas[0];
+  const entregadores = obterDados().couriers.filter((courier) =>
+    courier.companyId === empresa.id && apenasDigitos(courier.phone) === telefoneDigitos);
+  if (entregadores.length !== 1) return falha("Telefone ou código de conexão não conferem.");
+
+  const entregador = entregadores[0];
+  if (!entregador.active) {
+    return falha("Seu cadastro está inativo. Peça ao estabelecimento para reativá-lo.");
+  }
+
+  if (!gravarSessao({
+    ...sessao,
+    companyId: empresa.id,
+    courierId: entregador.id,
+    courierConfirmation: {
+      courierId: entregador.id,
+      companyId: empresa.id,
+      connectionCode: codigo,
+    },
+  })) {
+    return falha("Não foi possível salvar a confirmação neste navegador.");
+  }
+
+  return { ok: true, entregador };
+}
+
+// [VALIDAÇÃO] Mantém a confirmação vinculada ao entregador, à empresa e ao código atual.
+// Renovação do código ou inativação do cadastro remove o acesso a novos pedidos.
+export function identidadeEntregadorConfirmada(entregadorId) {
+  const sessao = lerSessao();
+  const confirmacao = sessao.courierConfirmation;
+  if (sessao.role !== "entregador"
+    || sessao.courierId !== entregadorId
+    || sessao.companyId !== confirmacao?.companyId
+    || !confirmacao
+    || confirmacao.courierId !== entregadorId) return false;
+
+  const entregador = obterDados().couriers.find((courier) =>
+    courier.id === entregadorId && courier.companyId === confirmacao.companyId && courier.active);
+  const empresa = obterDados().companies.find((item) => item.id === confirmacao.companyId);
+  return Boolean(entregador && empresa
+    && normalizarCodigo(empresa.connectionCode) === confirmacao.connectionCode);
+}
 
 export const viagensDoEntregador = (entregadorId) =>
   obterDados().trips
@@ -50,6 +114,8 @@ export function criarViagem(entregadorId, pedidoIds) {
   const entregador = dados.couriers.find((c) => c.id === entregadorId);
 
   if (!entregador) return falha("Entregador não encontrado.");
+  // [RF-ENT-10] Revalida no serviço para não depender somente da tela de pedidos.
+  if (!identidadeEntregadorConfirmada(entregadorId)) return falha("Confirme seu telefone e o código de conexão da empresa antes de assumir pedidos.");
   if (!entregador.active) return falha("Seu cadastro está inativo. Peça ao estabelecimento para reativá-lo antes de assumir viagens.");
   if (viagemAtiva(entregadorId)) return falha("Você já tem uma viagem em andamento. Conclua as entregas antes de iniciar outra.");
   if (!pedidoIds.length) return falha("Selecione ao menos um pedido.");

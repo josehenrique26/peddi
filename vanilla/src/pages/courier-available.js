@@ -8,7 +8,15 @@ import { MAX_PEDIDOS_VIAGEM } from "../data/order-rules.js";
 import { carregarDados, escutarMudancas } from "../services/storage.js";
 import { obterEmpresa } from "../services/companies.js";
 import { resumoDosItens } from "../services/client-orders.js";
-import { entregadorAtual, pedidosProntos, viagemAtiva, criarViagem, ultimoEvento } from "../services/courier-orders.js";
+import {
+  entregadorAtual,
+  pedidosProntos,
+  viagemAtiva,
+  criarViagem,
+  ultimoEvento,
+  confirmarIdentidadeEntregador,
+  identidadeEntregadorConfirmada,
+} from "../services/courier-orders.js";
 import { el, mount } from "../components/dom.js";
 import { icone } from "../components/icon.js";
 import { montarBarraDemo } from "../components/demo-bar.js";
@@ -84,8 +92,60 @@ function cartaoDoPedido(pedido, travado) {
       el("div", { class: "muted small" }, `Pronto ${quando(ultimoEvento(pedido).at)} · valor informativo ${brl(pedido.total)}`)));
 }
 
+function formularioDeConfirmacao() {
+  const telefone = el("input", {
+    id: "confirmar-telefone",
+    name: "phone",
+    type: "tel",
+    inputMode: "tel",
+    autoComplete: "tel",
+    required: true,
+    placeholder: "(83) 90000-0000",
+    "aria-label": "Telefone cadastrado do entregador",
+  });
+  const codigo = el("input", {
+    id: "confirmar-codigo",
+    name: "connectionCode",
+    type: "text",
+    inputMode: "text",
+    autoComplete: "off",
+    autoCapitalize: "characters",
+    maxLength: 8,
+    required: true,
+    placeholder: "Ex.: A1B2C3D4",
+    "aria-label": "Código de conexão da empresa",
+  });
+  const formulario = el("form", { class: "card stack", onsubmit: (evento) => {
+    evento.preventDefault();
+    const resultado = confirmarIdentidadeEntregador(telefone.value, codigo.value);
+    if (!resultado.ok) {
+      avisar(resultado.erro, "err");
+      return;
+    }
+    avisar(`Identidade confirmada. Olá, ${resultado.entregador.name}.`);
+    montarBarraDemo($("#demo"));
+    desenhar();
+  } },
+  el("div", {},
+    el("h2", {}, "Confirme sua identidade"),
+    el("p", { class: "muted small" }, "Informe o telefone cadastrado no estabelecimento e o código de conexão de 8 caracteres fornecido pela empresa. O código comercial usado pelos clientes não serve para esta confirmação.")),
+  el("label", { for: "confirmar-telefone" }, "Telefone com DDD"),
+  telefone,
+  el("label", { for: "confirmar-codigo" }, "Código de conexão da empresa"),
+  codigo,
+  el("button", { type: "submit", class: "btn btn-primary" }, "Confirmar e ver pedidos"));
+  return formulario;
+}
+
 function desenhar() {
   const entregador = entregadorAtual();
+  // [INTEGRAÇÃO] A lista só é montada depois que o serviço confirma a identidade.
+  if (!identidadeEntregadorConfirmada(entregador.id)) {
+    montarCasca("disp", entregador);
+    mount($("#main"), formularioDeConfirmacao());
+    return;
+  }
+
   const empresa = obterEmpresa(entregador.companyId);
   const prontos = pedidosProntos(entregador.companyId);
   const ativa = viagemAtiva(entregador.id);

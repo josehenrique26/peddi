@@ -1,10 +1,13 @@
 // Regras de cadastro e gerenciamento de entregadores do estabelecimento.
 import { obterDados, salvarDados, lerSessao } from "./storage.js";
 import { obterEmpresa } from "./companies.js";
-import { apenasDigitos, formatarTelefone, validarEntregador } from "../utils/validate.js";
+import { apenasDigitos, formatarTelefone, normalizarCodigo, validarEntregador } from "../utils/validate.js";
 
 const falha = (erro) => ({ ok: false, erro });
 const VIAGEM_ATIVA = ["aguardando_retirada", "em_andamento"];
+const ALFABETO_CODIGO_CONEXAO = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+const TAMANHO_CODIGO_CONEXAO = 8;
+const MAX_TENTATIVAS_CODIGO = 20;
 
 // [VALIDAÇÃO] A página também protege o acesso, mas o serviço repete a checagem
 // para impedir operações fora da empresa selecionada na sessão administrativa.
@@ -94,4 +97,51 @@ export function definirEntregadorAtivo(empresaId, entregadorId, active) {
     () => { entregador.active = Boolean(active); },
     () => { entregador.active = anterior; },
   );
+}
+
+// [RF-EMP-11] O código de conexão tem um campo próprio na empresa. O código
+// comercial continua reservado à localização da loja pelos clientes.
+function codigoDeConexaoDisponivel(codigo, empresaId) {
+  return !obterDados().companies.some((empresa) =>
+    normalizarCodigo(empresa.code) === codigo
+    || (empresa.id !== empresaId && normalizarCodigo(empresa.connectionCode) === codigo));
+}
+
+// [RF-EMP-11] Gera um código aleatório de 8 caracteres para a empresa da sessão.
+// Cada renovação substitui o código anterior; não há expiração nem uso único.
+export function gerarCodigoConexao(empresaId) {
+  const acesso = empresaAdministrada(empresaId);
+  if (acesso.erro) return falha(acesso.erro);
+
+  const aleatorio = globalThis.crypto;
+  if (!aleatorio || typeof aleatorio.getRandomValues !== "function") {
+    return falha("Este navegador não oferece geração aleatória segura para criar o código.");
+  }
+
+  const empresa = obterEmpresa(empresaId);
+  const codigoAnterior = empresa.connectionCode;
+  let codigo = "";
+  try {
+    for (let tentativa = 0; tentativa < MAX_TENTATIVAS_CODIGO; tentativa += 1) {
+      const bytes = aleatorio.getRandomValues(new Uint8Array(TAMANHO_CODIGO_CONEXAO));
+      codigo = [...bytes]
+        .map((byte) => ALFABETO_CODIGO_CONEXAO[byte % ALFABETO_CODIGO_CONEXAO.length])
+        .join("");
+      if (codigo !== codigoAnterior && codigoDeConexaoDisponivel(codigo, empresaId)) break;
+      codigo = "";
+    }
+  } catch (erro) {
+    return falha(`Não foi possível gerar o código de conexão: ${erro.message}`);
+  }
+  if (!codigo) return falha("Não foi possível gerar um código exclusivo. Tente novamente.");
+
+  const resultado = gravarComRollback(
+    obterDados(),
+    () => { empresa.connectionCode = codigo; },
+    () => {
+      if (codigoAnterior === undefined) delete empresa.connectionCode;
+      else empresa.connectionCode = codigoAnterior;
+    },
+  );
+  return resultado.ok ? { ok: true, codigo } : resultado;
 }

@@ -24,6 +24,19 @@
           <h1 class="grow">Entregadores</h1>
         </div>
 
+        <section class="panel courier-panel" aria-labelledby="titulo-codigo-conexao">
+          <div class="panel-hd"><h2 id="titulo-codigo-conexao">Código de conexão da empresa</h2></div>
+          <p class="muted small">Compartilhe este código de 8 caracteres com o entregador para ele se conectar a esta empresa. Ele não é o código comercial usado pelos clientes.</p>
+          <div class="row courier-code-row">
+            <output class="courier-code" id="codigo-conexao" aria-live="polite">Nenhum código gerado</output>
+            <button class="btn btn-ghost" id="copiar-codigo" type="button" disabled>Copiar código</button>
+            <button class="btn btn-primary" id="gerar-codigo" type="button">Gerar código</button>
+          </div>
+          <p class="hint">O código continua válido até ser renovado. Não há expiração automática nem uso único; renovar invalida o código anterior.</p>
+          <p class="err" id="erro-codigo" role="alert"></p>
+          <p class="courier-code-status" id="status-codigo" role="status" aria-live="polite"></p>
+        </section>
+
         <form id="form-entregador" class="panel courier-panel" novalidate>
           <div class="panel-hd"><h2>Cadastrar entregador</h2></div>
           <div class="courier-fields">
