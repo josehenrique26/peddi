@@ -11,6 +11,27 @@ globalThis.localStorage = {
 const storage = await import("../src/services/storage.js");
 const courierService = await import("../src/services/couriers.js");
 
+function comBytesRandomizados(valores, executar) {
+  const descritorOriginal = Object.getOwnPropertyDescriptor(globalThis, "crypto");
+  let chamada = 0;
+  Object.defineProperty(globalThis, "crypto", {
+    configurable: true,
+    value: {
+      getRandomValues(bytes) {
+        bytes.fill(valores[chamada] ?? 0);
+        chamada += 1;
+        return bytes;
+      },
+    },
+  });
+  try {
+    executar(() => chamada);
+  } finally {
+    if (descritorOriginal) Object.defineProperty(globalThis, "crypto", descritorOriginal);
+    else delete globalThis.crypto;
+  }
+}
+
 function iniciarComoAdmin(companyId = "co_forno") {
   armazenamento.clear();
   storage.carregarDados();
@@ -90,4 +111,66 @@ test("códigos antigos de entregador são normalizados sem perda do histórico",
   assert.ok(carregados.couriers.every((courier) => courier.code.length === 8));
   assert.equal(JSON.stringify(carregados.trips), viagensAntes);
   assert.ok(JSON.parse(armazenamento.get("peddi.v1.data")).couriers.every((courier) => courier.code.length === 8));
+});
+
+test("RF-EMP-11 gera código de conexão exclusivo e o persiste na empresa autorizada", () => {
+  iniciarComoAdmin();
+  const dados = storage.obterDados();
+  dados.companies.find((company) => company.id === "co_forno").code = "00000000";
+  dados.companies.find((company) => company.id === "co_burger").connectionCode = "11111111";
+  let numeroDeChamadas;
+
+  comBytesRandomizados([0, 1, 2], (chamadas) => {
+    const resultado = courierService.gerarCodigoConexao("co_forno");
+    assert.equal(resultado.ok, true, resultado.erro);
+    assert.match(resultado.codigo, /^[A-Z0-9]{8}$/);
+    assert.equal(resultado.codigo, "22222222");
+    assert.equal(dados.companies.find((company) => company.id === "co_forno").connectionCode, resultado.codigo);
+    assert.equal(dados.companies.find((company) => company.id === "co_burger").connectionCode, "11111111");
+    numeroDeChamadas = chamadas();
+  });
+  assert.equal(numeroDeChamadas, 3);
+  assert.equal(dados.companies.find((company) => company.id === "co_forno").code, "00000000");
+
+  storage.carregarDados();
+  assert.equal(storage.obterDados().companies.find((company) => company.id === "co_forno").connectionCode, "22222222");
+});
+
+test("RF-EMP-11 restringe geração à empresa da sessão e devolve novo código ao renovar", () => {
+  iniciarComoAdmin("co_forno");
+  comBytesRandomizados([2, 3], () => {
+    const primeiro = courierService.gerarCodigoConexao("co_forno");
+    assert.equal(primeiro.ok, true, primeiro.erro);
+
+    const acessoNegado = courierService.gerarCodigoConexao("co_burger");
+    assert.equal(acessoNegado.ok, false);
+
+    const renovado = courierService.gerarCodigoConexao("co_forno");
+    assert.equal(renovado.ok, true, renovado.erro);
+    assert.notEqual(renovado.codigo, primeiro.codigo);
+    assert.equal(storage.obterDados().companies.find((company) => company.id === "co_forno").connectionCode, renovado.codigo);
+    assert.notEqual(storage.obterDados().companies.find((company) => company.id === "co_forno").connectionCode, primeiro.codigo);
+  });
+});
+
+test("RF-EMP-11 informa falha de armazenamento e preserva código anterior", () => {
+  iniciarComoAdmin();
+  const empresa = storage.obterDados().companies.find((company) => company.id === "co_forno");
+  empresa.connectionCode = "ABCDEFGH";
+  storage.salvarDados();
+  const setItemOriginal = globalThis.localStorage.setItem;
+  globalThis.localStorage.setItem = (chave, valor) => {
+    if (chave === "peddi.v1.data") throw new Error("quota exceeded");
+    setItemOriginal(chave, valor);
+  };
+
+  try {
+    comBytesRandomizados([3], () => {
+      const resultado = courierService.gerarCodigoConexao("co_forno");
+      assert.equal(resultado.ok, false);
+      assert.equal(empresa.connectionCode, "ABCDEFGH");
+    });
+  } finally {
+    globalThis.localStorage.setItem = setItemOriginal;
+  }
 });
