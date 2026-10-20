@@ -21,13 +21,31 @@ function remover(chave) {
 
 let dados = null;
 
+// [PERSISTÊNCIA] Versões anteriores geravam códigos E-####7 com sete caracteres.
+// Corrigimos apenas esse padrão conhecido, preservando IDs, associações e histórico.
+function normalizarCodigosEntregadores(registro) {
+  if (!Array.isArray(registro.couriers)) return false;
+  let alterado = false;
+  for (const entregador of registro.couriers) {
+    if (/^E-\d{4}7$/.test(entregador.code)) {
+      entregador.code = entregador.code.replace(/^E-(\d{4})7$/, (_, digitos) => `E-0${digitos}7`);
+      alterado = true;
+    }
+  }
+  return alterado;
+}
+
 // Carrega os dados; se não existirem, forem de uma versão antiga ou estiverem corrompidos, cria os iniciais.
 export function carregarDados() {
   const bruto = ler(CHAVE_DADOS);
   if (bruto) {
     try {
       const lido = JSON.parse(bruto);
-      if (lido?.version === DATA_VERSION && Array.isArray(lido.companies)) return (dados = lido);
+      if (lido?.version === DATA_VERSION && Array.isArray(lido.companies)) {
+        dados = lido;
+        if (normalizarCodigosEntregadores(dados)) salvarDados();
+        return dados;
+      }
     } catch { /* corrompido: guarda cópia e recria */ }
     gravar(CHAVE_DADOS + ".backup", bruto);
   }

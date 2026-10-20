@@ -46,7 +46,7 @@ export function criarDadosIniciais() {
   ];
 
   const C = (id, co, name, phone, active) =>
-    ({ id, companyId: co, name, phone, code: "E-" + id.slice(3).padStart(4, "0") + "7", active });
+    ({ id, companyId: co, name, phone, code: "E-" + id.slice(3).padStart(5, "0") + "7", active });
   const couriers = [
     C("ct_1", "co_forno", "Rafael Mota", "(83) 98800-0011", true),
     C("ct_2", "co_forno", "Camila Duarte", "(83) 98800-0012", true),

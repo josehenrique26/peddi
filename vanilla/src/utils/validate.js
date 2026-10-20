@@ -32,6 +32,17 @@ export function validarCheckout({ name, phone, cep, street, district }) {
   return erros;
 }
 
+// [VALIDAÇÃO] Usa o mesmo formato de telefone já adotado no checkout para manter
+// os contatos consistentes e permitir comparar cadastros sem depender da máscara.
+export function validarEntregador({ name, phone }) {
+  const erros = {};
+  const nome = String(name ?? "").trim();
+  if (nome.length < 2) erros.name = "Informe o nome do entregador.";
+  else if (nome.length > 100) erros.name = "O nome deve ter até 100 caracteres.";
+  if (!TELEFONE.test(apenasDigitos(phone))) erros.phone = "Informe um telefone com DDD. Ex.: (83) 90000-0000.";
+  return erros;
+}
+
 // ---- configurações da empresa
 const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/; // letras minúsculas, números e hífen: "forno-da-vila"
 const CODIGO = /^[A-Z0-9]{4,10}$/;       // "VILA482"

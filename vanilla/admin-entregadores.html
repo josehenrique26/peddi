@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Entregadores · Peddi</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="icon" href="/img/logo.svg" />
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/src/styles/main.css" />
+    <link rel="stylesheet" href="/src/styles/pages/admin.css" />
+    <link rel="stylesheet" href="/src/styles/pages/admin-couriers.css" />
+  </head>
+  <body>
+    <a class="sr" href="#main">Ir para o conteúdo</a>
+    <div class="demo" id="demo" role="region" aria-label="Controles de demonstração"></div>
+    <div class="adm">
+      <aside class="side" id="menu-lateral" aria-label="Navegação do estabelecimento"></aside>
+      <div class="scrim" id="scrim"></div>
+      <main class="adm-main" id="main">
+        <div class="adm-top">
+          <button class="icon-btn burger" id="abrir-menu" type="button" aria-label="Abrir menu" aria-expanded="false"><span data-icon="menu" data-size="20"></span></button>
+          <h1 class="grow">Entregadores</h1>
+        </div>
+
+        <form id="form-entregador" class="panel courier-panel" novalidate>
+          <div class="panel-hd"><h2>Cadastrar entregador</h2></div>
+          <div class="courier-fields">
+            <div class="field">
+              <label for="entregador-nome">Nome <span class="req" aria-hidden="true">*</span></label>
+              <input id="entregador-nome" name="name" type="text" maxlength="100" autocomplete="name" required />
+            </div>
+            <div class="field">
+              <label for="entregador-telefone">Telefone com DDD <span class="req" aria-hidden="true">*</span></label>
+              <input id="entregador-telefone" name="phone" type="tel" inputmode="tel" maxlength="16" placeholder="(83) 90000-0000" autocomplete="tel" required />
+            </div>
+          </div>
+          <p class="err" id="erro-entregador" role="alert"></p>
+          <button class="btn btn-primary" id="salvar-entregador" type="submit">Cadastrar entregador</button>
+        </form>
+
+        <section aria-labelledby="titulo-lista">
+          <div class="courier-list-heading">
+            <div><h2 id="titulo-lista">Entregadores cadastrados</h2><p class="muted small" id="contagem-entregadores"></p></div>
+          </div>
+          <div id="lista-entregadores" class="courier-list" aria-live="polite"></div>
+        </section>
+      </main>
+    </div>
+    <script type="module" src="/src/pages/admin-couriers.js"></script>
+  </body>
+</html>
