@@ -5,7 +5,7 @@ import { icone } from "./icon.js";
 import { marcaLogo } from "./logo.js";
 import { rotas } from "../utils/routes.js";
 import { obterEmpresa } from "../services/companies.js";
-import { pedidosProntos } from "../services/courier-orders.js";
+import { pedidosProntos, identidadeEntregadorConfirmada } from "../services/courier-orders.js";
 
 const ABAS = [
   ["disp", rotas.entregador, "bag", "Disponíveis"],
@@ -18,8 +18,10 @@ const $ = (seletor) => document.querySelector(seletor);
 // Preenche o topo e a navegação. Pode ser chamada de novo quando os dados mudam.
 export function montarCasca(aba, entregador) {
   const empresa = obterEmpresa(entregador.companyId);
-  const prontos = pedidosProntos(entregador.companyId).length;
-  document.title = `Entregas · ${empresa.name} · Peddi`;
+  // [INTEGRAÇÃO] Não expõe vínculo nem contagem de pedidos antes da confirmação.
+  const confirmado = identidadeEntregadorConfirmada(entregador.id);
+  const prontos = confirmado ? pedidosProntos(entregador.companyId).length : 0;
+  document.title = confirmado ? `Entregas · ${empresa.name} · Peddi` : "Confirmar identidade · Peddi";
 
   const logo = el("span", { class: "logo cr-logo" });
   logo.innerHTML = marcaLogo(26); // marca fixa do projeto, sem dados digitados
@@ -27,13 +29,19 @@ export function montarCasca(aba, entregador) {
 
   mount($("#cr-topo"),
     el("div", { class: "row between nowrap" }, logo,
-      entregador.active
-        ? el("span", { class: "badge b-green" }, icone("check", 13), "Ativo")
-        : el("span", { class: "badge b-gray" }, icone("ban", 13), "Inativo")),
+      confirmado
+        ? (entregador.active
+          ? el("span", { class: "badge b-green" }, icone("check", 13), "Ativo")
+          : el("span", { class: "badge b-gray" }, icone("ban", 13), "Inativo"))
+        : el("span", { class: "badge b-amber" }, icone("alert", 13), "Confirmação pendente")),
     el("div", { class: "cr-sub" },
-      el("div", { class: "small cr-muted" }, "Vinculado a"),
-      el("div", { class: "strong cr-empresa" }, empresa.name),
-      el("div", { class: "small cr-muted" }, `${entregador.name} · ${entregador.code}`)),
+      confirmado
+        ? [
+            el("div", { class: "small cr-muted" }, "Vinculado a"),
+            el("div", { class: "strong cr-empresa" }, empresa.name),
+            el("div", { class: "small cr-muted" }, `${entregador.name} · ${entregador.code}`),
+          ]
+        : el("div", { class: "small cr-muted" }, "Confirme seus dados para acessar os pedidos.")),
   );
 
   mount($("#cr-nav"), el("div", { class: "in" }, ABAS.map(([chave, destino, nomeIcone, rotulo]) =>

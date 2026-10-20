@@ -10,6 +10,7 @@ globalThis.localStorage = {
 
 const storage = await import("../src/services/storage.js");
 const courierService = await import("../src/services/couriers.js");
+const courierOrders = await import("../src/services/courier-orders.js");
 
 function comBytesRandomizados(valores, executar) {
   const descritorOriginal = Object.getOwnPropertyDescriptor(globalThis, "crypto");
@@ -217,4 +218,94 @@ test("RF-EMP-11 para após 20 colisões sem substituir o código vigente", () =>
     if (descritorOriginal) Object.defineProperty(globalThis, "crypto", descritorOriginal);
     else delete globalThis.crypto;
   }
+});
+
+test("RF-ENT-10 confirma entregador pelo telefone e código de conexão da empresa", () => {
+  iniciarComoAdmin();
+  const empresa = storage.obterDados().companies.find((company) => company.id === "co_forno");
+  empresa.connectionCode = "FORNO123";
+  storage.gravarSessao({ role: "entregador", companyId: "co_burger", courierId: "ct_4" });
+
+  const resultado = courierOrders.confirmarIdentidadeEntregador("83 98800-0012", "forno123");
+
+  assert.equal(resultado.ok, true, resultado.erro);
+  assert.equal(resultado.entregador.id, "ct_2");
+  assert.equal(storage.lerSessao().companyId, "co_forno");
+  assert.equal(storage.lerSessao().courierId, "ct_2");
+  assert.equal(courierOrders.identidadeEntregadorConfirmada("ct_2"), true);
+  assert.equal(courierOrders.identidadeEntregadorConfirmada("ct_1"), false);
+});
+
+test("RF-ENT-10 rejeita dados incorretos, entregador inativo e código não gerado", () => {
+  iniciarComoAdmin();
+  storage.gravarSessao({ role: "entregador", companyId: "co_forno", courierId: "ct_1" });
+
+  assert.equal(courierOrders.confirmarIdentidadeEntregador("83988000011", "FORNO123").ok, false);
+  storage.obterDados().companies.find((company) => company.id === "co_forno").connectionCode = "FORNO123";
+  assert.equal(courierOrders.confirmarIdentidadeEntregador("83988000011", "WRONG123").ok, false);
+  assert.equal(courierOrders.confirmarIdentidadeEntregador("83988000013", "FORNO123").ok, false);
+  assert.equal(courierOrders.identidadeEntregadorConfirmada("ct_1"), false);
+});
+
+test("RF-ENT-10 bloqueia novas viagens até confirmar e invalida confirmação ao renovar código", () => {
+  iniciarComoAdmin();
+  const dados = storage.obterDados();
+  dados.companies.find((company) => company.id === "co_forno").connectionCode = "FORNO123";
+  storage.gravarSessao({ role: "entregador", companyId: "co_forno", courierId: "ct_2" });
+  const pedidoPronto = courierOrders.pedidosProntos("co_forno")[0];
+
+  assert.equal(courierOrders.criarViagem("ct_2", [pedidoPronto.id]).ok, false);
+  assert.equal(courierOrders.confirmarIdentidadeEntregador("83988000012", "FORNO123").ok, true);
+  assert.equal(courierOrders.criarViagem("ct_2", [pedidoPronto.id]).ok, true);
+
+  const confirmacao = storage.lerSessao().courierConfirmation;
+  storage.gravarSessao({ role: "admin", companyId: "co_forno", customerId: "cu_1", courierId: "ct_1" });
+  comBytesRandomizados([0], () => {
+    assert.equal(courierService.gerarCodigoConexao("co_forno").ok, true);
+  });
+  storage.gravarSessao({
+    role: "entregador",
+    companyId: "co_forno",
+    courierId: "ct_2",
+    courierConfirmation: confirmacao,
+  });
+  assert.equal(courierOrders.identidadeEntregadorConfirmada("ct_2"), false);
+});
+
+test("integração: gera código, conecta entregador e persiste associação sem perder dados", () => {
+  iniciarComoAdmin("co_forno");
+  const dadosIniciais = storage.obterDados();
+  const pedidosAntes = structuredClone(dadosIniciais.orders);
+  const viagensAntes = structuredClone(dadosIniciais.trips);
+  const entregasAntes = structuredClone(dadosIniciais.deliveries);
+
+  let codigo;
+  comBytesRandomizados([0], () => {
+    const geracao = courierService.gerarCodigoConexao("co_forno");
+    assert.equal(geracao.ok, true, geracao.erro);
+    codigo = geracao.codigo;
+  });
+
+  storage.gravarSessao({ role: "entregador", companyId: "co_forno", customerId: "cu_1", courierId: "ct_1" });
+  const conexao = courierOrders.confirmarIdentidadeEntregador("83988000012", codigo);
+  assert.equal(conexao.ok, true, conexao.erro);
+  assert.equal(conexao.entregador.id, "ct_2");
+
+  const pedidoPronto = courierOrders.pedidosProntos("co_forno")[0];
+  const viagem = courierOrders.criarViagem("ct_2", [pedidoPronto.id]);
+  assert.equal(viagem.ok, true, viagem.erro);
+
+  // [INTEGRAÇÃO] Recarregar força a leitura do armazenamento, validando a associação persistida.
+  storage.carregarDados();
+  const recarregados = storage.obterDados();
+  assert.equal(recarregados.companies.find((company) => company.id === "co_forno").connectionCode, codigo);
+  assert.equal(courierOrders.entregadorAtual().id, "ct_2");
+  assert.equal(courierOrders.identidadeEntregadorConfirmada("ct_2"), true);
+  assert.ok(recarregados.trips.some((trip) =>
+    trip.id === viagem.id && trip.courierId === "ct_2" && trip.companyId === "co_forno"));
+  assert.deepEqual(recarregados.orders, pedidosAntes);
+  assert.deepEqual(recarregados.trips.filter((trip) =>
+    viagensAntes.some((anterior) => anterior.id === trip.id)), viagensAntes);
+  assert.deepEqual(recarregados.deliveries.filter((delivery) =>
+    entregasAntes.some((anterior) => anterior.id === delivery.id)), entregasAntes);
 });
