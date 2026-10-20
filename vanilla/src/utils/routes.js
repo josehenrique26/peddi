@@ -3,6 +3,7 @@ export const rotas = {
   inicio: () => "index.html",
   loja: (slug) => `loja.html?empresa=${encodeURIComponent(slug)}`,
   admin: () => "admin.html",
+  adminEntregadores: () => "admin-entregadores.html",
   pedidos: () => "pedidos.html",
   carrinho: () => "carrinho.html",
   checkout: () => "checkout.html",

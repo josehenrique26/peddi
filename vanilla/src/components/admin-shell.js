@@ -10,7 +10,7 @@ const NAV = [
   ["dashboard", "grid", "Dashboard", "admin.html"],
   ["pedidos", "receipt", "Pedidos", "admin-pedidos.html"],
   ["cardapio", "book", "Cardápio", "admin-cardapio.html"],
-  ["entregadores", "bike", "Entregadores", "admin-entregadores.html"],
+  ["entregadores", "bike", "Entregadores", rotas.adminEntregadores()],
   ["config", "sliders", "Configurações", "admin-config.html"],
 ];
 
