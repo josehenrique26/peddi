@@ -174,3 +174,47 @@ test("RF-EMP-11 informa falha de armazenamento e preserva código anterior", () 
     globalThis.localStorage.setItem = setItemOriginal;
   }
 });
+
+test("RF-EMP-11 informa falha se a fonte segura de aleatoriedade não existir", () => {
+  iniciarComoAdmin();
+  const descritorOriginal = Object.getOwnPropertyDescriptor(globalThis, "crypto");
+  Object.defineProperty(globalThis, "crypto", { configurable: true, value: undefined });
+  try {
+    const resultado = courierService.gerarCodigoConexao("co_forno");
+    assert.equal(resultado.ok, false);
+    assert.match(resultado.erro, /geração aleatória segura/);
+    assert.equal(storage.obterDados().companies.find((company) => company.id === "co_forno").connectionCode, undefined);
+  } finally {
+    if (descritorOriginal) Object.defineProperty(globalThis, "crypto", descritorOriginal);
+    else delete globalThis.crypto;
+  }
+});
+
+test("RF-EMP-11 para após 20 colisões sem substituir o código vigente", () => {
+  iniciarComoAdmin();
+  const empresa = storage.obterDados().companies.find((company) => company.id === "co_forno");
+  storage.obterDados().companies.find((company) => company.id === "co_burger").connectionCode = "11111111";
+  empresa.connectionCode = "ABCDEFGH";
+  const descritorOriginal = Object.getOwnPropertyDescriptor(globalThis, "crypto");
+  let chamadas = 0;
+  Object.defineProperty(globalThis, "crypto", {
+    configurable: true,
+    value: {
+      getRandomValues(bytes) {
+        bytes.fill(1);
+        chamadas += 1;
+        return bytes;
+      },
+    },
+  });
+  try {
+    const resultado = courierService.gerarCodigoConexao("co_forno");
+    assert.equal(resultado.ok, false);
+    assert.match(resultado.erro, /código exclusivo/);
+    assert.equal(chamadas, 20);
+    assert.equal(empresa.connectionCode, "ABCDEFGH");
+  } finally {
+    if (descritorOriginal) Object.defineProperty(globalThis, "crypto", descritorOriginal);
+    else delete globalThis.crypto;
+  }
+});

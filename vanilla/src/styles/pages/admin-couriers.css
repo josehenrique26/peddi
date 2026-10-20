@@ -1,12 +1,16 @@
 .courier-panel{max-width:900px;display:grid;gap:14px}
 .courier-panel .panel-hd{margin-bottom:0}
 .courier-panel h2,.courier-list-heading h2{font-size:1.15rem;margin:0}
+.courier-panel>p{margin:0}
 .courier-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
 .courier-fields .field{min-width:0}
+.courier-code-row{flex-wrap:wrap}
+.courier-code{font-family:var(--font-d);font-size:1.4rem;font-weight:800;letter-spacing:.12em;min-width:220px}
+.courier-code-status:empty{display:none}
 .courier-list-heading{margin-bottom:10px}
 .courier-list{display:grid;gap:8px}
 .courier-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;background:var(--surface);border:1px solid var(--line);border-radius:10px}
 .courier-details{min-width:0;overflow-wrap:anywhere}
 .courier-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .courier-panel .err:empty{display:none}
-@media(max-width:680px){.courier-fields{grid-template-columns:1fr}.courier-row{align-items:flex-start;flex-direction:column}}
+@media(max-width:680px){.courier-fields{grid-template-columns:1fr}.courier-row{align-items:flex-start;flex-direction:column}.courier-code{min-width:0}}
